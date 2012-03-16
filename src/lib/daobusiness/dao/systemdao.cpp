@@ -40,14 +40,14 @@ bool SystemDAO::insertSystemObject(const QString &name, const QString &type, con
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
 	QString sql = QString("INSERT INTO alepherp_system(nombre, contenido, type, version, debug, on_init_debug) "
 						  "VALUES (:nombre, :contenido, :type, :version, :debug, :on_init_debug)");
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":nombre", name);
 	qry->bindValue(":contenido", contenido);
 	qry->bindValue(":type", type);
 	qry->bindValue(":version", version);
 	qry->bindValue(":debug", debug);
 	qry->bindValue(":on_init_debug", debugOnInit);
-	result = qry->exec();
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO::insertSystemObject: [ " << qry->lastQuery() << " ]";
 	if ( !result ) {
 		qDebug() << "SystemDAO::insertSystemObject: [ " << qry->lastError().text() << " ]";
@@ -84,9 +84,9 @@ QList<ALEPHERP_SYSTEM_OBJECT> SystemDAO::allSystemObjects()
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
 	QString sql = QString("SELECT nombre, contenido, type, version, debug, on_init_debug FROM alepherp_system");
 	QList<ALEPHERP_SYSTEM_OBJECT> list;
-
-	qry->prepare(sql);
-	bool result = qry->exec();
+        bool result;
+	result = qry->prepare(sql);
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO::allSystemObjects: [ " << qry->lastQuery() << " ]";
 	if ( !result ) {
 		qDebug() << "SystemDAO::allSystemObjects: [ " << qry->lastError().text() << " ]";
@@ -112,11 +112,11 @@ bool SystemDAO::deleteSystemObject(const QString &name, const QString &type, int
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
 	QString sql = QString("DELETE FROM alepherp_system WHERE nombre = :nombre AND type = :type AND "
 						  "version = :version");
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":nombre", name);
 	qry->bindValue(":type", type);
 	qry->bindValue(":version", version);
-	result = qry->exec();
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO::deleteSystemObject: [ " << qry->lastQuery() << " ]";
 	if ( !result ) {
 		qDebug() << "SystemDAO::deleteSystemObject: [ " << qry->lastError().text() << " ]";
@@ -131,10 +131,10 @@ int SystemDAO::versionSystemObject(const QString &name, const QString &type)
 						  "WHERE nombre = :nombre and type = :type");
 	int result = -1;
 
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":nombre", name);
 	qry->bindValue(":type", type);
-	if ( !(qry->exec() & qry->first()) ) {
+	if ( !(result && qry->exec() & qry->first()) ) {
 		qDebug() << "SystemDAO::versionSystemObject: [ " << qry->lastError().text() << " ]";
 	} else {
 		result = qry->value(0).toInt();
@@ -152,10 +152,10 @@ bool SystemDAO::getUISystem(const QString &name, QString &ui)
 	bool result;
 	QString sql = QString(SQL_SELECT_SYSTEM_UI_BY_NOMBRE);
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":nombre", name, QSql::In);
 
-	result = qry->exec();
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO: getUISystem: [ " << qry->lastQuery() << " ]";
 	if ( result && qry->first() ) {
 		ui = qry->value(0).toString();
@@ -176,8 +176,8 @@ bool SystemDAO::getAllUISystem(QStringList &names, QStringList &uis)
 	bool result;
 	QString sql = QString(SQL_SELECT_SYSTEM_UI);
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
-	qry->prepare(sql);
-	result = qry->exec();
+	result = qry->prepare(sql);
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO: getAllUISystem: [ " << qry->lastQuery() << " ]";
 	if ( result ) {
 		while ( qry->next() ) {
@@ -200,8 +200,8 @@ bool SystemDAO::getAllReportSystem(QStringList &names, QStringList &reports)
 	bool result;
 	QString sql = QString(SQL_SELECT_SYSTEM_REPORT);
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
-	qry->prepare(sql);
-	result = qry->exec();
+	result = qry->prepare(sql);
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO: getAllReportSystem: [ " << qry->lastQuery() << " ]";
 	if ( result ) {
 		while ( qry->next() ) {
@@ -224,8 +224,8 @@ bool SystemDAO::getAllQSSystem(QStringList &names, QStringList &scripts, QList<b
 	bool result;
 	QString sql = QString(SQL_SELECT_SYSTEM_QS);
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
-	qry->prepare(sql);
-	result = qry->exec();
+	result = qry->prepare(sql);
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO: getAllQSSystem: [ " << qry->lastQuery() << " ]";
 	if ( result ) {
 		while ( qry->next() ) {
@@ -252,10 +252,10 @@ void SystemDAO::getXMLSystemTable(const QString &tableName, QString &xml)
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
 	bool result;
 
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":nombre", tableName, QSql::In);
 
-	result = qry->exec();
+	if (result) result = qry->exec();
 	qDebug() << "SystemDAO: getXMLSystemTable: [ " << tableName << ": " << qry->lastQuery() << " ]";
 	if ( result && qry->first() ) {
 		xml = qry->value(0).toString();
@@ -276,8 +276,8 @@ bool SystemDAO::getAllXMLSystemTable(QStringList &names, QStringList &xml)
 	bool r;
 	QString sql = QString(SQL_SELECT_SYSTEM_TABLES);
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getSystemDatabase()));
-	qry->prepare(sql);
-	r = qry->exec();
+	r = qry->prepare(sql);
+	if (r) r = qry->exec();
 	qDebug() << "SystemDAO: getAllXMLSystemTable: [ " << qry->lastQuery() << " ]";
 	if ( r ) {
 		while ( qry->next() ) {
@@ -307,8 +307,8 @@ bool SystemDAO::checkSystemTable()
 	sql = QString("SELECT nombre, type, max(version) FROM %1_system GROUP BY nombre, type").arg(configuracion.systemTablePrefix());
 	sqlSystemObject = QString("SELECT contenido, debug, on_init_debug FROM %1_system "
 							  "WHERE nombre = :nombre AND type = :type AND version = :version").arg(configuracion.systemTablePrefix());
-	qry->prepare(sql);
-	result = qry->exec() & qry->first();
+	result = qry->prepare(sql);
+	if (result) result = qry->exec() & qry->first();
 	qDebug() << "SystemDAO: checkSystemTable: [ " << qry->lastQuery() << " ]";
 	if ( result ) {
 		do {
@@ -320,11 +320,11 @@ bool SystemDAO::checkSystemTable()
 						return false;
 					}
 				}
-				qryContent->prepare(sqlSystemObject);
+				result = qryContent->prepare(sqlSystemObject);
 				qryContent->bindValue(":nombre", qry->value(0));
 				qryContent->bindValue(":type", qry->value(1));
 				qryContent->bindValue(":version", qry->value(2));
-				if ( qryContent->exec() && qryContent->first() ) {
+				if ( result && qryContent->exec() && qryContent->first() ) {
 					if ( !SystemDAO::insertSystemObject(qry->value(0).toString(),
 														qry->value(1).toString(),
 														qryContent->value(0).toString(),
