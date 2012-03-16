@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DBDetailView</class>
+ <widget class="QWidget" name="DBDetailView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>445</width>
+    <height>406</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="margin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="pbAdd">
+       <property name="toolTip">
+        <string>Pulse aquí para añadir una dirección.</string>
+       </property>
+       <property name="statusTip">
+        <string>Pulse aquí para añadir una dirección.</string>
+       </property>
+       <property name="whatsThis">
+        <string>Pulse aquí para añadir una dirección.</string>
+       </property>
+       <property name="text">
+        <string>Añadir (F2)</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/edit_add.png</normaloff>:/generales/images/edit_add.png</iconset>
+       </property>
+       <property name="shortcut">
+        <string>F2</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbEdit">
+       <property name="toolTip">
+        <string>Pulse aquí para editar la dirección señalada.</string>
+       </property>
+       <property name="statusTip">
+        <string>Pulse aquí para editar la dirección señalada.</string>
+       </property>
+       <property name="whatsThis">
+        <string>Pulse aquí para editar la dirección señalada.</string>
+       </property>
+       <property name="text">
+        <string>Modificar (F3)</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/edit_edit.png</normaloff>:/generales/images/edit_edit.png</iconset>
+       </property>
+       <property name="shortcut">
+        <string>F3</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbDelete">
+       <property name="toolTip">
+        <string>Pulse aquí para borrar la dirección seleccionada.</string>
+       </property>
+       <property name="statusTip">
+        <string>Pulse aquí para borrar la dirección seleccionada.</string>
+       </property>
+       <property name="whatsThis">
+        <string>Pulse aquí para borrar la dirección seleccionada.</string>
+       </property>
+       <property name="text">
+        <string>Borrar (F5)</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/edit_remove.png</normaloff>:/generales/images/edit_remove.png</iconset>
+       </property>
+       <property name="shortcut">
+        <string>F5</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="DBTableView" name="tableView">
+     <property name="editTriggers">
+      <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SingleSelection</enum>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectItems</enum>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DBTableView</class>
+   <extends>QTableView</extends>
+   <header>widgets/dbtableview.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../../../resources/resources.qrc"/>
+  <include location="../../../resources/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

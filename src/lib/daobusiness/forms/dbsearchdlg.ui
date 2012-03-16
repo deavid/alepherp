@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DBSearchDlg</class>
+ <widget class="QDialog" name="DBSearchDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>758</width>
+    <height>640</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string/>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../../../resources/resources.qrc">
+    <normaloff>:/aplicacion/images/alephLogoIcon.ico</normaloff>:/aplicacion/images/alephLogoIcon.ico</iconset>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Resultados</string>
+     </property>
+     <layout class="QHBoxLayout">
+      <item>
+       <widget class="DBTableView" name="tvResults">
+        <property name="editTriggers">
+         <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked</set>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SingleSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+        <property name="sortingEnabled">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <layout class="QHBoxLayout">
+     <item>
+      <widget class="QPushButton" name="pbBuscar">
+       <property name="toolTip">
+        <string>Buscar...</string>
+       </property>
+       <property name="whatsThis">
+        <string>Realiza la búsqueda según los datos introducidos</string>
+       </property>
+       <property name="text">
+        <string>Buscar</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/edit_search.png</normaloff>:/generales/images/edit_search.png</iconset>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbOk">
+       <property name="toolTip">
+        <string>Cierra el formulario y selecciona el registro marcado</string>
+       </property>
+       <property name="statusTip">
+        <string>Cierra el formulario y selecciona el registro marcado</string>
+       </property>
+       <property name="whatsThis">
+        <string>Cierra el formulario y selecciona el registro marcado</string>
+       </property>
+       <property name="text">
+        <string>&amp;Ok</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/aplicacion/images/ok.png</normaloff>:/aplicacion/images/ok.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbFiltrar">
+       <property name="toolTip">
+        <string>Aplicar Filtro</string>
+       </property>
+       <property name="whatsThis">
+        <string>En el formulario maestro, desde el que abrió este de búsqueda, visualizará sólo aquellos registros que coinciden con los parámetros introducidos.</string>
+       </property>
+       <property name="text">
+        <string>Aplicar filtro</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/applyfilter.png</normaloff>:/generales/images/applyfilter.png</iconset>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbEditar">
+       <property name="toolTip">
+        <string>Modificar registro seleccionado</string>
+       </property>
+       <property name="whatsThis">
+        <string>Permite abrir el formulario de edición del registro seleccionado.</string>
+       </property>
+       <property name="text">
+        <string>Editar</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/edit_edit.png</normaloff>:/generales/images/edit_edit.png</iconset>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbSalir">
+       <property name="toolTip">
+        <string>Cierra este formulario</string>
+       </property>
+       <property name="statusTip">
+        <string>Cierra este formulario</string>
+       </property>
+       <property name="whatsThis">
+        <string>Cierra este formulario</string>
+       </property>
+       <property name="text">
+        <string>Salir</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../../resources/resources.qrc">
+         <normaloff>:/generales/images/close.png</normaloff>:/generales/images/close.png</iconset>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="gbSearchFields">
+     <property name="title">
+      <string>Introduzca los parámetros de búsqueda</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="margin">
+       <number>0</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DBTableView</class>
+   <extends>QTableView</extends>
+   <header>widgets/dbtableview.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>pbBuscar</tabstop>
+  <tabstop>pbFiltrar</tabstop>
+  <tabstop>pbEditar</tabstop>
+  <tabstop>pbSalir</tabstop>
+ </tabstops>
+ <resources>
+  <include location="../../../resources/resources.qrc"/>
+  <include location="../../../resources/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

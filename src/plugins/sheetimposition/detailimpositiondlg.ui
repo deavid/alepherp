@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DetailImpositionDlg</class>
+ <widget class="QDialog" name="DetailImpositionDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>525</width>
+    <height>397</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="SheetImposition" name="sheetImposition"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pbOk">
+     <property name="text">
+      <string>&amp;Ok</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>images/ok.png</normaloff>images/ok.png</iconset>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>SheetImposition</class>
+   <extends>QWidget</extends>
+   <header>sheetimposition.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

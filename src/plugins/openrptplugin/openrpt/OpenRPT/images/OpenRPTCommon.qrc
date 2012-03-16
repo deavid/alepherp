@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/login">
+        <file>openrpt_login.png</file>
+    </qresource>
+    <qresource prefix="/preview">
+        <file>viewzoomin.png</file>
+        <file>viewzoomout.png</file>
+        <file>printer_32.png</file>
+        <file>close.png</file>
+    </qresource>
+</RCC>
