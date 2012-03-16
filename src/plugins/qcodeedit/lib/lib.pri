@@ -100,3 +100,5 @@ qnfa {
 		qnfa/qnfadefinition.cpp \
 		qnfa/xml2qnfa.cpp
 }
+
+DESTDIR = $$BUILDPATH/lib
