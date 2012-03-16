@@ -1,4 +1,4 @@
-ALEPHERPPATH=/home/david/src/alepherp
+ALEPHERPPATH=$$PWD
 BUILDPATH=$$ALEPHERPPATH/build
 DLLSPATH=$$ALEPHERPPATH/src/dlls
 APPNAME=alepherp
