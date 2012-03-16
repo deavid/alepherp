@@ -41,7 +41,9 @@ INCLUDEPATH +=  ./ \
 				plugins/htmleditor
 
 LIBS += -lconfig \
-			-ldaobusiness
+			-ldaobusiness \
+			-lhtmleditor\
+			-lqcodeedit
 #			-lvmime \
 #			-liconv \
 #			-lpq
