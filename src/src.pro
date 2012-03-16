@@ -59,3 +59,5 @@ SOURCES += main.cpp \
 HEADERS += checkstatus.h
 
 RESOURCES += resources/resources.qrc
+
+QMAKE_LFLAGS += '-Wl,-rpath,\'\$$ORIGIN/../lib\'' 
