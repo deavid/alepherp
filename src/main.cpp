@@ -201,6 +201,7 @@ PERPMainWindow * loadMainUi()
 			QMessageBox::warning(0, QObject::trUtf8(APP_NAME), mensaje, QMessageBox::Ok);
 		}
 	} else {
+		QMessageBox::warning(0, QObject::trUtf8(APP_NAME),  QObject::trUtf8("El fichero %1 no existe").arg(fileName), QMessageBox::Ok);
 		QMessageBox::warning(0, QObject::trUtf8(APP_NAME), mensaje, QMessageBox::Ok);
 	}
 	return widget;

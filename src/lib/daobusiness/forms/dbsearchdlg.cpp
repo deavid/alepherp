@@ -175,7 +175,7 @@ bool DBSearchDlg::setupExternalWidget()
 			ui->gbSearchFields->setLayout(layout);
 			d->m_widget->show();
 		} else {
-			QMessageBox::warning(this, trUtf8(APP_NAME), trUtf8("No se ha podido cargar la interfaz de usuario de este formulario. Existe un problema en la definición de las tablas de sistema de su programa."),
+			QMessageBox::warning(this, trUtf8(APP_NAME), trUtf8("No se ha podido cargar la interfaz de usuario de dbsearch de este formulario. Existe un problema en la definición de las tablas de sistema de su programa."),
 								 QMessageBox::Ok);
 			close();
 		}
