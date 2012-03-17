@@ -36,8 +36,8 @@ Si todo termina bien, debería haber creado "build/bin/alepherp" que es el
 ejecutable final. Si no lo crea por algún motivo, vea más abajo la sección de 
 Errores conocidos al compilar.
 
-Instalación
---------------------
+Instalación Base de datos
+-----------------------------
 
 Necesitará al menos un servidor de base de datos con una base de datos vacía.
 Recomendamos usar PostgreSQL. A la base de datos la llamaremos "alepherp". 
@@ -76,6 +76,26 @@ Se recomienda establecer las siguientes opciones::
     [generales]
     debuggerEnabled=true <- Modo desarrollador
 
+Inicialización de un proyecto
+-------------------------------    
+
+Debe definirse como mínimo un UI de tipo QMainDlg (pantalla principal)(*1) , y 
+una tabla en un fichero .mtd y con eso debería funcionar.
+
+Cuando arranque, el sistema buscará un archivo en la tabla "alepherp_system" 
+que tenga como valores::
+
+    * nombre: main.qmaindlg.ui
+    * contenido: El contenido XML de una ventana generada con QtDesigner
+    * type: ui
+    * on_init_debug y debug a false
+    * version: 1
+
+También puedes asociarle un archivo .qs con código Qs, con las mismas columnas 
+que antes, y nombre main.qmaindlg.qs y type: qs
+
+*1: en AlephERP la pantalla principal no es fija, se lee de base de datos
+
 Iniciando el programa
 -------------------------
 
@@ -91,15 +111,65 @@ como parte de la aplicación. Estamos trabajando para documentar esta parte.
 Errores conocidos al compilar
 ------------------------------
 
+Q: Qmake me devuelve dos avisos sobre que no localiza algún elemento
+
+A: config.pri, ALEPHERPPATH debería valer $$PWD. Está solucionado en la última versión.
+
+--
+
+Q: No encuentra libconfig.so y/o libdaobusiness.so
+
+A: config.pri, ALEPHERPPATH debería valer $$PWD. Está solucionado en la última versión.
+
+--
+
+Q: /usr/bin/ld: cannot find -lqcodeedit
+
+A: Está solucionado en la última versión. Falta que copie libqcodeedit a la carpeta
+lib de la compilación. Se puede copiar a mano.
+
+--
+
+Q: libhtmleditor.so / libqcodeedit.so.1, needed by (..)/libdaobusiness.so, not found 
+
+A: Falta que en la compilación final enlace también con estas dos librerías. 
+Está solucionado en la última versión.
+
+--
+
 Errores conocidos al iniciar el programa
 -----------------------------------------
+
+Q: No encuentra las librerías ".so" de la carpeta lib y no arranca.
+
+A: Comprueba que las librerías estén en "../lib/" desde la ruta del ejecutable.
+Si es así, hay un problema con rpath, que está solucionado en la última versión.
+
+--
+
+Q: Me da un montón de errores de SQL en "EXECUTE".
+
+A: Es un bug del programa corregido en la última versión. Si tienes la última
+versión, avisa al autor de cómo reproducir el problema. También es indicativo
+de que estás usando una versión anticuada de la estructura de base de datos.
+
+--
+
+Últimos cambios en la estructura de sistema
+----------------------------------------------
+
+ * La tabla alepherp_system ahora tiene una nueva columna "version" integer.
+ * La tabla printingerp_envvars ahora se llama alepherp_envvars.
+
 
 Preguntas frecuentes
 ------------------------
 
 Q: ¿Cómo distingue AlephERP el tipo de base de datos, si es MySQL, PostgreSQL o SQLLite, es por el puerto?
+
 A: ????
 
+--
 
 
 
