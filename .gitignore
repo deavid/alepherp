@@ -1,0 +1,5 @@
+build/
+0*-*.patch
+Makefile
+qrc_*.cpp
+lib*.a
