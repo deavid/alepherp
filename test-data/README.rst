@@ -38,3 +38,10 @@ crear y actualizar manualmente.
 Hemos preparado en "structure.sql" la consulta que crea estas dos tablas. Podemos
 ejecutarla con PgAdmin3 o con psql.
 
+
+Problemas conocidos
+------------------------
+
+La aplicación buscará los ficheros en la carpeta temporal que se especificó en la
+configuración, pero parece que por el momento no los copia allí. Es necesario
+copiar manualmente los ficheros.
