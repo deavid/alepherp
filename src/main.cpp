@@ -188,20 +188,31 @@ PERPMainWindow * loadMainUi()
 	QString fileName = QString("%1/main.qmaindlg.ui").
 					   arg(QDir::fromNativeSeparators(configuracion.tempPath()));
 	QUiLoader uiLoader;
-	QString pluginDir = QString("%1/plugins/designer").arg(qApp->applicationDirPath());
+	QString pluginDir = QString("%1/../plugins/designer").arg(qApp->applicationDirPath());
+	qDebug() << QString("Buscando plugins en '%1'").arg(pluginDir);
 	QFile file (fileName);
+	QWidget *tmp_widget = NULL;
 	PERPMainWindow *widget = NULL;
 	QString mensaje = QObject::trUtf8("No se ha podido cargar la interfaz de usuario de este formulario. Existe un problema en la definición de las tablas de sistema de su programa.");
 
 	if ( file.exists() ) {
 		uiLoader.addPluginPath(pluginDir);
 		file.open( QFile::ReadOnly );
-		widget = qobject_cast<PERPMainWindow *>(uiLoader.load(&file));
+		tmp_widget = uiLoader.load(&file);
+		if ( tmp_widget ) {
+			widget = qobject_cast<PERPMainWindow *>(tmp_widget);
+			if ( widget == NULL ) {
+				qDebug() << QString("Fallo en la transformacion (cast) del widget en el fichero %1").arg(fileName);
+			}
+		} else {
+			qDebug() << QString("Fallo en la carga del widget en el fichero %1").arg(fileName);
+		}
 		if ( widget == NULL ) {
 			QMessageBox::warning(0, QObject::trUtf8(APP_NAME), mensaje, QMessageBox::Ok);
 		}
 	} else {
-		QMessageBox::warning(0, QObject::trUtf8(APP_NAME),  QObject::trUtf8("El fichero %1 no existe").arg(fileName), QMessageBox::Ok);
+		qDebug() << QString("El fichero %1 no existe").arg(fileName);
+		
 		QMessageBox::warning(0, QObject::trUtf8(APP_NAME), mensaje, QMessageBox::Ok);
 	}
 	return widget;
