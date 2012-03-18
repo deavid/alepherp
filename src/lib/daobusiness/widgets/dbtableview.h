@@ -151,7 +151,7 @@ public slots:
 	void setValue(const QVariant &value);
 	void observerUnregistered();
 	void saveTableViewColumnOrder(const QStringList &order, const QStringList &sort);
-	void checkAllItems();
+	void checkAllItems(bool checked = true);
 
 signals:
 	void valueEdited(const QVariant &value);

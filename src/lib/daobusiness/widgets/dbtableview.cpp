@@ -397,9 +397,9 @@ void DBTableView::observerUnregistered()
 }
 
 /*!
-  Si hay una columna con checkbox, permite marcarla entera...
+  Si hay una columna con checkbox, permite marcarla o desmarcarla entera...
   */
-void DBTableView::checkAllItems()
+void DBTableView::checkAllItems(bool checked)
 {
 	FilterBaseBeanModel *mdlFilter = qobject_cast<FilterBaseBeanModel *>(model());
 	if ( mdlFilter == NULL ) {
@@ -409,7 +409,7 @@ void DBTableView::checkAllItems()
 	if ( mdl == NULL ) {
 		return;
 	}
-	mdl->checkAllItems();
+	mdl->checkAllItems(checked);
 }
 
 /*!
