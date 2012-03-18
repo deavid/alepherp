@@ -60,8 +60,7 @@ int main(int argc, char *argv[])
 	// Cargamos el archivo con las traducciones
 	QTranslator translator;
 	if (translator.load("qt_es", app.applicationDirPath()) == false) {
-		QMessageBox::warning(0, QString::fromUtf8(APP_NAME), 
-							 QObject::trUtf8("Ha sido imposible cargar el fichero con las traducciones."));
+		qDebug() << QObject::trUtf8("Ha sido imposible cargar el fichero con las traducciones.");
 	} else {
 		app.installTranslator(&translator);
 	}
