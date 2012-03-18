@@ -13,17 +13,20 @@ CheckStatus::CheckStatus(QObject *parent) : QObject(parent)
 	m_dbOpen = false;
 	m_manager = NULL;
 	m_timer = NULL;
-    if ( configuracion.check().isEmpty() ) {
-        QMessageBox::critical(0, QString::fromUtf8(APP_NAME),
-                              QString::fromUtf8("Aplicación no configurada. Se cerrara."), QMessageBox::Ok);
-		QTimer::singleShot(250, qApp, SLOT(quit()));
-        return;
-    }
-    if ( configuracion.check() == "1qazxsw23edcvfr45tgbnhy67ujm" ){
         m_check = false;
-	} else {
-        m_url = configuracion.check();
-        m_check = true;
+	if (false) {
+		if ( configuracion.check().isEmpty() ) {
+			QMessageBox::critical(0, QString::fromUtf8(APP_NAME),
+				QString::fromUtf8("Aplicación no configurada. Se cerrara."), QMessageBox::Ok);
+			QTimer::singleShot(250, qApp, SLOT(quit()));
+			return;
+		}
+		if ( configuracion.check() == "1qazxsw23edcvfr45tgbnhy67ujm" ){
+			m_check = false;
+		} else {
+			m_url = configuracion.check();
+			m_check = true;
+		}
 	}
 }
 
