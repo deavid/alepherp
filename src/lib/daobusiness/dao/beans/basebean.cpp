@@ -217,6 +217,7 @@ int BaseBean::relationChildsCount(const QString &relationName, bool includeToBeD
 	if ( rel != NULL ) {
 		return rel->childsCount(includeToBeDeleted);
 	}
+	return 0;
 }
 
 /*!
