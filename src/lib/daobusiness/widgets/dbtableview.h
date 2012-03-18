@@ -130,6 +130,8 @@ public:
 	Q_INVOKABLE QSharedPointer<BaseBean> addBean();
 	Q_INVOKABLE void deleteSelectedsBean();
     Q_INVOKABLE BaseBeanPointerList checkedBeans();
+	Q_INVOKABLE void setCheckedBeans(BaseBeanPointerList list, bool checked = true);
+	Q_INVOKABLE void setCheckedBeansByPk(QVariantList list, bool checked = true);
 
 	void orderColumns(const QStringList &order);
 	void sortByColumn(const QString &field, Qt::SortOrder order = Qt::DescendingOrder);

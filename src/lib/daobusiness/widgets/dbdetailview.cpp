@@ -248,3 +248,23 @@ void DBDetailView::fromScriptValue(const QScriptValue &object, DBDetailView * &o
 {
 	out = qobject_cast<DBDetailView *>(object.toQObject());
 }
+
+BaseBeanPointerList DBDetailView::checkedBeans()
+{
+	// TODO: Mirar codigo de DBListView y hacerlo común a DBAbstractView
+	return BaseBeanPointerList();
+}
+
+void DBDetailView::setCheckedBeans(BaseBeanPointerList list, bool checked)
+{
+	// TODO: Mirar codigo de DBListView y hacerlo común a DBAbstractView
+	Q_UNUSED(list)
+	Q_UNUSED(checked)
+}
+
+void DBDetailView::setCheckedBeansByPk(QVariantList list, bool checked)
+{
+	// TODO: Mirar codigo de DBListView y hacerlo común a DBAbstractView
+	Q_UNUSED(list)
+	Q_UNUSED(checked)
+}

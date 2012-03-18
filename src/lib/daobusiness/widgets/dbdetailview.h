@@ -97,6 +97,10 @@ public:
 	static QScriptValue toScriptValue(QScriptEngine *engine, DBDetailView * const &in);
 	static void fromScriptValue(const QScriptValue &object, DBDetailView * &out);
 
+	Q_INVOKABLE BaseBeanPointerList checkedBeans();
+	Q_INVOKABLE void setCheckedBeans(BaseBeanPointerList list, bool checked = true);
+	Q_INVOKABLE void setCheckedBeansByPk(QVariantList list, bool checked = true);
+
 public slots:
 	void setValue(const QVariant &value);
 	void refresh();

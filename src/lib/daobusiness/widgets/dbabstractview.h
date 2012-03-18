@@ -74,6 +74,10 @@ public:
 	virtual void setInternalData(bool value);
 	virtual void setRelationFilter(const QString &name);
 
+	virtual BaseBeanPointerList checkedBeans() = 0;
+	virtual void setCheckedBeans(BaseBeanPointerList list, bool checked = true) = 0;
+	virtual void setCheckedBeansByPk(QVariantList list, bool checked = true) = 0;
+
 	BaseBeanMetadata * metadata();
 
 	BaseBeanPointerList selectedBeans();

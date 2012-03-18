@@ -436,6 +436,27 @@ BaseBeanPointerList DBTableView::checkedBeans()
     return list;
 }
 
+void DBTableView::setCheckedBeansByPk(QVariantList list, bool checked)
+{
+	// TODO: Hay codigo similar hecho para DBListView. Lo suyo sería hacerlo común en DBAbstractView
+	Q_UNUSED(list)
+	Q_UNUSED(checked)
+}
+
+/*!
+  Devuelve un listado de los beans que han sido checkeados por el usuario.
+  Esta función puede ser llamada desde Javascript, en el constructor del widget. En ese
+  caso los modelos aún no se han creado, por lo que se guardarán en una estructura
+  intermedia las primary keys de los beans pasados. No se guardan los beans, porque
+  estos pueden haber sido borrados previamente por el motor de javascript
+  */
+void DBTableView::setCheckedBeans(BaseBeanPointerList list, bool checked)
+{
+	// TODO: Hay codigo similar hecho para DBListView. Lo suyo sería hacerlo común en DBAbstractView
+	Q_UNUSED(list)
+	Q_UNUSED(checked)
+}
+
 void DBTableView::setFieldCheckBox(const QString &name)
 {
     d->m_itemCheckBox = name;
