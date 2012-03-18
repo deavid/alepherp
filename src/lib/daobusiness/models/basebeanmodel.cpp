@@ -79,7 +79,7 @@ void BaseBeanModel::checkAllItems(bool checked)
 
 void BaseBeanModel::setCheckedItems(QModelIndexList list, bool checked)
 {
-	int lessRow=ULONG_MAX, lessCol=ULONG_MAX, maxRow=0, maxCol=0;
+	int lessRow=INT_MAX, lessCol=INT_MAX, maxRow=0, maxCol=0;
 	if ( list.size() == 0 ) {
 		return;
 	}
@@ -102,8 +102,8 @@ void BaseBeanModel::setCheckedItems(QModelIndexList list, bool checked)
 			maxCol = index.column();
 		}
 	}
-	QModelIndex topLeft = index(lessRow, lessCol);
-	QModelIndex bottomRight = index(maxRow, maxCol);
+	QModelIndex topLeft = createIndex(lessRow, lessCol, 0);
+	QModelIndex bottomRight = createIndex(maxRow, maxCol, 0);
 	emit dataChanged(topLeft, bottomRight);
 }
 
