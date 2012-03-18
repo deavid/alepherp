@@ -204,8 +204,8 @@ bool BaseDAO::loadEnvVars()
     QString sql = QString(SQL_SELECT_SYSTEM_ENVVARS).arg(configuracion.systemTablePrefix()).
             arg(qApp->property("userName").toString());
     QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase()));
-    qry->prepare(sql);
-    result = qry->exec();
+    result = qry->prepare(sql);
+    if (result) result = qry->exec();
 	qDebug() << "BaseDAO: loadEnvVars: [" << qry->lastQuery() << "]";
     if ( result ) {
         while ( qry->next() ) {
@@ -264,8 +264,8 @@ bool BaseDAO::select(BaseBeanPointerList &beans, const QString &tableName,
 		beans = BaseDAO::getContentCachedQuery(metadata->tableName(), sql);
 		return true;
 	} else {
-		qry->prepare(sql);
-		result = qry->exec();
+		result = qry->prepare(sql);
+		if (result) result = qry->exec();
 		qDebug() << "BaseDAO: select: [" << qry->lastQuery() << "]";
 		if ( result ) {
 			while ( qry->next() ) {
@@ -315,8 +315,8 @@ bool BaseDAO::select(QList<BaseBean *> &beans, const QString &tableName,
 		return false;
 	}
 
-	qry->prepare(sql);
-    result = qry->exec();
+	result = qry->prepare(sql);
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: select: [" << qry->lastQuery() << "]";
     if ( result ) {
 		while ( qry->next() ) {
@@ -361,8 +361,8 @@ int BaseDAO::selectCount(const QString &tableName, const QString &where, const Q
 		sql = sql.replace(":whereClausule", where);
 	}
 
-	qry->prepare(sql);
-    bool result = qry->exec();
+	bool result = qry->prepare(sql);
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: selectCount: [" << qry->lastQuery() << "]";
     if ( result ) {
         if ( qry->first() ) {
@@ -382,8 +382,8 @@ int BaseDAO::selectCountWithFrom(const QString &sql, const QString &connection)
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
 	QString temp = QString("SELECT count(*) FROM %1").arg(sql);
 
-	qry->prepare(temp);
-    bool result = qry->exec();
+	bool result = qry->prepare(temp);
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: selectCountWithFrom: [" << qry->lastQuery() << "]";
     if ( result ) {
         if ( qry->first() ) {
@@ -432,8 +432,8 @@ bool BaseDAO::selectFirst(BaseBean *bean, const QString &where, const QString &o
 			bean->setFieldValueFromInternal(fld->metadata()->dbFieldName(), fld->value());
 		}
 	} else {
-		qry->prepare(sql);
-		result = qry->exec();
+		result = qry->prepare(sql);
+		if ( result ) result = qry->exec();
 		qDebug() << "BaseDAO: selectFirst: [" << qry->lastQuery() << "]";
 		if ( result ) {
 			if ( qry->first() ) {
@@ -529,8 +529,8 @@ bool BaseDAO::selectByPk(QVariant id, BaseBean *bean, const QString &connection)
 			bean->setFieldValueFromInternal(fld->metadata()->dbFieldName(), fld->value());
 		}
 	} else {
-		qry->prepare(sql);
-		bool result = qry->exec();
+		bool result = qry->prepare(sql);
+		if ( result ) result = qry->exec();
 		qDebug() << "BaseDAO: selectByPk: [" << qry->lastQuery() << "]";
 		if ( result ) {
 			if ( qry->first() ) {
@@ -718,7 +718,7 @@ bool BaseDAO::insert(BaseBean *bean, bool saveChilds, const QString &connection)
 		}
 	}
 	sql = QString("INSERT INTO %1 (%2) VALUES (%3)").arg(bean->metadata()->tableName()).arg(sqlFields).arg(sqlValues);
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	foreach ( DBField *field, fields ) {
 		if ( insertFieldOnUpdateSql(field, BaseBean::INSERT) ) {
 			if ( field->metadata()->type() == QVariant::Pixmap ) {
@@ -730,7 +730,7 @@ bool BaseDAO::insert(BaseBean *bean, bool saveChilds, const QString &connection)
 			i++;
 		}
 	}
-	result = qry->exec();
+	if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: insert: [" << qry->lastQuery() << "]";
 	if ( !result ) {
 		writeDbMessages(qry.data());
@@ -815,7 +815,7 @@ bool BaseDAO::update(BaseBean *bean, bool saveChilds, const QString &connection)
 		if ( !sqlFields.isEmpty() ) {
 			sql = QString("UPDATE %1 SET %2 WHERE %3").arg(bean->metadata()->tableName()).
 				  arg(sqlFields).arg(bean->sqlWherePk());
-			qry->prepare(sql);
+			result = qry->prepare(sql);
 			foreach ( DBField *field, fields ) {
 				if ( insertFieldOnUpdateSql(field, BaseBean::UPDATE) ) {
                     if ( field->metadata()->type() == QVariant::Pixmap ) {
@@ -827,7 +827,7 @@ bool BaseDAO::update(BaseBean *bean, bool saveChilds, const QString &connection)
 					i++;
 				}
 			}
-			result = qry->exec();
+			if ( result ) result = qry->exec();
 			qDebug() << "BaseDAO: update: [" << qry->lastQuery() << "]";
 		}
 		if ( !result ) {
@@ -941,8 +941,8 @@ bool BaseDAO::remove(BaseBean *bean, bool firstCall, const QString &connection)
 		sql = QString("DELETE FROM %1 WHERE %2").arg(bean->metadata()->tableName()).
 			  arg(bean->sqlWherePk());
 	}
-	qry->prepare(sql);
-	result = qry->exec();
+	result = qry->prepare(sql);
+	if (result) result = qry->exec();
 	qDebug() << "BaseDAO: remove: [" << qry->lastQuery() << "]";
 	if ( !result ) {
 		writeDbMessages(qry.data());
@@ -991,8 +991,8 @@ bool BaseDAO::execute(const QString &sql, const QString &connection)
 {
 	bool result;
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
-	qry->prepare(sql);
-	result = qry->exec();
+	result = qry->prepare(sql);
+	if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: execute: [" << qry->lastQuery() << "]";
 	if ( !result ) {
 		writeDbMessages(qry.data());
@@ -1007,8 +1007,8 @@ bool BaseDAO::execute(const QString &sql, QVariant &result, const QString &conne
 {
 	bool r;
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
-	qry->prepare(sql);
-	r = qry->exec();
+	r = qry->prepare(sql);
+	if ( r ) r = qry->exec();
 	qDebug() << "BaseDAO: execute: [" << qry->lastQuery() << "]";
     if ( r ) {
         if ( qry->first() ) {
@@ -1032,8 +1032,8 @@ bool BaseDAO::executeCached(const QString &sql, QVariant &result, const QString 
 		return true;
 	} else {
 		QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
-		qry->prepare(sql);
-		r = qry->exec();
+		r = qry->prepare(sql);
+		if ( r ) r = qry->exec();
 		qDebug() << "BaseDAO: executeCached: [" << qry->lastQuery() << "]";
 		if ( r && qry->first() ) {
 			result = qry->value(0);
@@ -1086,9 +1086,9 @@ bool BaseDAO::unlock (int id, const QString &connection)
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
 	QString sql = QString("DELETE FROM %1_locks WHERE id = :id").arg(configuracion.systemTablePrefix());
 
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":id", id);
-	result = qry->exec();
+	if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: unlock: [" << qry->lastQuery() << "]";
 	return result;
 }
@@ -1104,10 +1104,10 @@ bool BaseDAO::lockInformation(const QString &tableName, const QVariant &pk, QHas
 
 	sql = QString("SELECT id, tablename, username, pk_serialize, ts FROM %1_locks WHERE tablename = :tablename and pk_serialize = :pk_serialize").
 			arg(configuracion.systemTablePrefix());
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":tablename", tableName);
 	qry->bindValue(":pk_serialize", serializePk(pk));
-    result = qry->exec();
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: lockInformation: [" << qry->lastQuery() << "]";
     if ( result && qry->size() > 0 && qry->first() ) {
 		information["id"] = qry->value(0).toInt();
@@ -1131,9 +1131,9 @@ bool BaseDAO::isLockValid(int id, const QString &tableName, const QString &userN
     bool result;
 	QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
 	QString sql = QString("SELECT id, tablename, username, pk_serialize FROM %1_locks WHERE id = :id").arg(configuracion.systemTablePrefix());
-	qry->prepare(sql);
+	result = qry->prepare(sql);
 	qry->bindValue(":id", id);
-    result = qry->exec();
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: isLockValid: [" << qry->lastQuery() << "]";
     if ( result && qry->first() ) {
 		QString pkSerialized = serializePk(pk);
@@ -1177,8 +1177,8 @@ bool BaseDAO::selectField(DBField *fld, const QString &connection)
     QScopedPointer<QSqlQuery> qry (new QSqlQuery(Database::getQDatabase(connection)));
     QString sql = QString("SELECT %1 FROM %2 WHERE %3").arg(fld->metadata()->dbFieldName()).
             arg(fld->bean()->metadata()->tableName()).arg(fld->bean()->sqlWherePk());
-    qry->prepare(sql);
-    result = qry->exec();
+    result = qry->prepare(sql);
+    if ( result ) result = qry->exec();
 	qDebug() << "BaseDAO: selectField: [" << sql << "]";
     if ( result && qry->first() ) {
         if ( fld->metadata()->type() == QVariant::Pixmap ) {
@@ -1276,8 +1276,8 @@ void BaseDAO::readSerialValuesAfterInsert(BaseBean *bean, int oid, const QString
 			sql = QString("SELECT %1 FROM %2 WHERE %3").arg(field->metadata()->dbFieldName()).
 					arg(bean->metadata()->tableName()).arg(where);
 			qDebug() << "BaseDAO: readSerialValuesAfterInsert: [" << sql << "]";
-			qry->prepare(sql);
-			if ( qry->exec() && qry->first() ) {
+			bool r = qry->prepare(sql);
+			if ( r && qry->exec() && qry->first() ) {
 				field->setValue( qry->value(0) );
 			}
 		}
@@ -1327,9 +1327,9 @@ bool BaseDAO::reloadFieldChangedAfterSave(BaseBean *bean)
 	QString sqlFields = sqlSelectFieldsClausule(flds);
 	QString sql = QString("SELECT %1 FROM %2 ").arg(sqlFields, bean->metadata()->tableName());
 	sql = QString("%1 WHERE %2").arg(sql).arg(bean->sqlWherePk());
-	qry->prepare(sql);
+	bool r = qry->prepare(sql);
 	qDebug() << "BaseDAO: reloadFieldChangedAfterSave: [" << sql << "]";
-	if ( qry->exec() && qry->first() ) {
+	if ( r && qry->exec() && qry->first() ) {
 		int i = 0;
 		result = true;
 		bean->blockSignals(true);
