@@ -1,0 +1,37 @@
+<table> 
+    <name>alepherp_concepto</name> 
+    <alias>Concepto</alias> 
+    <isCached>true</isCached> 
+    <field> 
+        <name>id</name> 
+        <alias>Id de Concepto</alias> 
+        <null>false</null> 
+        <pk>true</pk> 
+        <type>serial</type> 
+        <length>255</length> 
+        <visiblegrid>false</visiblegrid> 
+        <relation> 
+            <table>caja</table> 
+            <field>id_concepto</field> 
+            <card>1M</card> 
+        </relation> 
+    </field> 
+    <field> 
+        <name>tipo</name> 
+        <alias>Tipo</alias> 
+        <null>false</null> 
+        <pk>false</pk> 
+        <type>string</type> 
+        <length>250</length> 
+        <visiblegrid>true</visiblegrid> 
+    </field> 
+    <field> 
+        <name>descripcion</name> 
+        <alias>Descripcion</alias> 
+        <null>false</null> 
+        <pk>false</pk> 
+        <type>string</type> 
+        <length>250</length> 
+        <visiblegrid>true</visiblegrid> 
+    </field> 
+</table>

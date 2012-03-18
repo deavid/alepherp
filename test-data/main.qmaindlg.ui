@@ -1,87 +1,144 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <author>JSA</author>
+ <class>QMainDlg</class>
+ <widget class="PERPMainWindow" name="QMainDlg">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>401</width>
-    <height>300</height>
+    <width>665</width>
+    <height>502</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form Title</string>
+   <string>AlephERP</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Preferred</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <widget class="QLabel" name="label">
-     <property name="font">
-      <font>
-       <pointsize>24</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Wellcome</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_2">
-     <property name="font">
-      <font>
-       <pointsize>24</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>AlephERP</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer_2">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Preferred</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-  </layout>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>:/BolaAleph.png</normaloff>:/BolaAleph.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="barraHerramientasTienda">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="separator"/>
+   <addaction name="table_alepherp_concepto"/>
+   <addaction name="table_alepherp_ejercicios"/>
+   <addaction name="separator"/>
+   <addaction name="actionClose"/>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>665</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuAcciones">
+    <property name="title">
+     <string>Acciones</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="table_alepherp_concepto"/>
+    <addaction name="table_alepherp_ejercicios"/>
+    <addaction name="actionClose"/>
+   </widget>
+   <widget class="QMenu" name="menuUsuario">
+    <property name="title">
+     <string>Usuario</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="actionStyle"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuAcciones"/>
+   <addaction name="menuUsuario"/>
+  </widget>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/generales/images/close.png</normaloff>:/generales/images/close.png</iconset>
+   </property>
+   <property name="text">
+    <string>Salir</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::QuitRole</enum>
+   </property>
+  </action>
+  <action name="actionStyle">
+   <property name="text">
+    <string>Editar estilo</string>
+   </property>
+   <property name="toolTip">
+    <string>Edita el estilo de la aplicación</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>Acerca de...</string>
+   </property>
+  </action>
+  <action name="table_alepherp_concepto">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/Crystal_Clear_app_kspread.png</normaloff>:/Crystal_Clear_app_kspread.png</iconset>
+   </property>
+   <property name="text">
+    <string>Conceptos de Caja</string>
+   </property>
+   <property name="toolTip">
+    <string>Conceptos de Caja</string>
+   </property>
+  </action>
+  <action name="table_alepherp_ejercicios">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/Coin64.png</normaloff>:/Coin64.png</iconset>
+   </property>
+   <property name="text">
+    <string>Ejercicios</string>
+   </property>
+   <property name="toolTip">
+    <string>Ejercicios para los datos de la aplicación</string>
+   </property>
+  </action>
  </widget>
- <resources/>
+ <customwidgets>
+  <customwidget>
+   <class>PERPMainWindow</class>
+   <extends>QMainWindow</extends>
+   <header>perpmainwindow.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="C:/programacion/alepherp/src/resources/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
