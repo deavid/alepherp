@@ -158,13 +158,19 @@ void PERPMainWindow::init()
 	QHash<QString, QVariant> permissions = qApp->property("permissions").toHash();
 	foreach ( QAction *action, actions ) {
 		// Las acciones deben tener el mismo nombre que las tablas principales
+		qDebug() << QString("Procesando accion %1").arg(action->objectName());
 		if ( action->objectName().contains("table") ) {
 			QString tableName = action->objectName();
 			tableName.replace("table_", "");
 			QString p = permissions.value(tableName).toString();
 			if ( p.isEmpty() || (!p.contains("r") && !p.contains("w")) ) {
 				action->setVisible(false);
+				qDebug() << QString("Accion %1 (%2), se oculta").arg(action->objectName()).arg(tableName);
 			}
+			else
+			{
+				qDebug() << QString("Accion %1 (%2), correcto").arg(action->objectName()).arg(tableName);
+    			}
 			d->m_signalMapper->setMapping(action, action->objectName());
 			connect(action, SIGNAL(triggered()), d->m_signalMapper, SLOT (map()));
 		}
