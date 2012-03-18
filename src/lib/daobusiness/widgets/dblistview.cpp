@@ -246,7 +246,7 @@ BaseBeanPointerList DBListView::checkedBeans()
 	return list;
 }
 
-void DBListView::setCheckedBeansByPk(QVariantList list)
+void DBListView::setCheckedBeansByPk(QVariantList list, bool checked)
 {
 	BaseBeanModel *mdl = NULL;
 	FilterBaseBeanModel *filterModel = qobject_cast<FilterBaseBeanModel *>(model());
@@ -269,7 +269,7 @@ void DBListView::setCheckedBeansByPk(QVariantList list)
 		}
 	}
 	if ( checkedItems.size() > 0 ) {
-		mdl->setCheckedItems(checkedItems);
+		mdl->setCheckedItems(checkedItems, checked);
 	}
 }
 
@@ -280,7 +280,7 @@ void DBListView::setCheckedBeansByPk(QVariantList list)
   intermedia las primary keys de los beans pasados. No se guardan los beans, porque
   estos pueden haber sido borrados previamente por el motor de javascript
   */
-void DBListView::setCheckedBeans(BaseBeanPointerList list)
+void DBListView::setCheckedBeans(BaseBeanPointerList list, bool checked)
 {
 	BaseBeanModel *mdl = NULL;
 	FilterBaseBeanModel *filterModel = qobject_cast<FilterBaseBeanModel *>(model());
@@ -295,7 +295,7 @@ void DBListView::setCheckedBeans(BaseBeanPointerList list)
 		}
 	}
 	if ( mdl != NULL ) {
-		setCheckedBeansByPk(d_ptr->m_initedCheckedBeansPk);
+		setCheckedBeansByPk(d_ptr->m_initedCheckedBeansPk, checked);
 	}
 }
 

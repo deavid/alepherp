@@ -115,8 +115,8 @@ public:
 	void applyFieldProperties();
 
 	Q_INVOKABLE BaseBeanPointerList checkedBeans();
-	Q_INVOKABLE void setCheckedBeans(BaseBeanPointerList list);
-	Q_INVOKABLE void setCheckedBeansByPk(QVariantList list);
+	Q_INVOKABLE void setCheckedBeans(BaseBeanPointerList list, bool checked = true);
+	Q_INVOKABLE void setCheckedBeansByPk(QVariantList list, bool checked = true);
 
 	static QScriptValue toScriptValue(QScriptEngine *engine, DBListView * const &in);
 	static void fromScriptValue(const QScriptValue &object, DBListView * &out);

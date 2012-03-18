@@ -54,10 +54,10 @@ public:
 	virtual QStringList checkColumns() const;
 
 	QModelIndexList checkedItems();
-	void setCheckedItems(QModelIndexList list);
-	void setCheckedItem(QModelIndex index);
-	void setCheckedItem(int row);
-	void checkAllItems();
+	void setCheckedItems(QModelIndexList list, bool checked = true);
+	void setCheckedItem(QModelIndex index, bool checked = true);
+	void setCheckedItem(int row, bool checked = true);
+	void checkAllItems(bool checked = true);
 
 signals:
 

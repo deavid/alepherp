@@ -66,25 +66,29 @@ QModelIndexList BaseBeanModel::checkedItems()
 }
 
 /*!
-  Marca todos los items
+  Marca o desmarca todos los items (segun el valor de checked)
   */
-void BaseBeanModel::checkAllItems()
+void BaseBeanModel::checkAllItems(bool checked)
 {
 	QModelIndexList list;
 	for ( int i = 0 ; i < rowCount() ; i++ ) {
 		list.append(createIndex(i, 0, 0));
 	}
-	setCheckedItems(list);
+	setCheckedItems(list, checked);
 }
 
-void BaseBeanModel::setCheckedItems(QModelIndexList list)
+void BaseBeanModel::setCheckedItems(QModelIndexList list, bool checked)
 {
 	int lessRow=ULONG_MAX, lessCol=ULONG_MAX, maxRow=0, maxCol=0;
 	if ( list.size() == 0 ) {
 		return;
 	}
 	foreach (QModelIndex index, list) {
-		m_checkedItems[index.row()] = Qt::Checked;
+		if ( checked ) {
+			m_checkedItems[index.row()] = Qt::Checked;
+		} else {
+			m_checkedItems[index.row()] = Qt::Unchecked;
+		}
 		if ( lessRow > index.row() ) {
 			lessRow = index.row();
 		}
@@ -103,18 +107,22 @@ void BaseBeanModel::setCheckedItems(QModelIndexList list)
 	emit dataChanged(topLeft, bottomRight);
 }
 
-void BaseBeanModel::setCheckedItem(QModelIndex index)
+void BaseBeanModel::setCheckedItem(QModelIndex index, bool checked)
 {
 	if ( index.isValid() ) {
-		m_checkedItems[index.row()] = Qt::Checked;
+		if ( checked ) {
+			m_checkedItems[index.row()] = Qt::Checked;
+		} else {
+			m_checkedItems[index.row()] = Qt::Unchecked;
+		}
 		emit dataChanged(index, index);
 	}
 }
 
-void BaseBeanModel::setCheckedItem(int row)
+void BaseBeanModel::setCheckedItem(int row, bool checked)
 {
 	QModelIndex idx = index(row, 0);
-	setCheckedItem(idx);
+	setCheckedItem(idx, checked);
 }
 
 QSharedPointer<BaseBean> BaseBeanModel::bean(int row)
