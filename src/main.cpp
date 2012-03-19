@@ -132,18 +132,11 @@ int main(int argc, char *argv[])
 
 		splash->finish(mainWin);
 	
-		//QThread thread;
-		CheckStatus chk;
-		// thread.start();
-		// chk.moveToThread(&thread);
-		chk.init();
-
 		splash->close();
 		delete splash;
 
 		bool rc = app.exec();
 
-		//thread.quit();
 		delete mainWin;
 		return rc;
 	}
