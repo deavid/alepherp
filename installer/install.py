@@ -365,7 +365,7 @@ class WPageAsistenteConexion3(WizardPage):
         host = str(settings.value(KEY_SERVIDORDB).toString())
         port = int(settings.value(KEY_PORTDB).toString())
         
-        conn = psycopg2.connect(dbname="template1", user=username, host=host, port=port, password=password)
+        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
         if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
         conn.set_isolation_level(0)
         cur = conn.cursor()
@@ -393,7 +393,7 @@ class WPageAsistenteConexion3(WizardPage):
         host = str(settings.value(KEY_SERVIDORDB).toString())
         port = int(settings.value(KEY_PORTDB).toString())
         
-        conn = psycopg2.connect(dbname=dbname, user=username, host=host, port=port, password=password)
+        conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password)
         if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
         conn.set_isolation_level(0)
         cur = conn.cursor()
@@ -467,7 +467,7 @@ class WPageDBConnect(WizardPage):
         host = str(settings.value(KEY_SERVIDORDB).toString())
         port = int(settings.value(KEY_PORTDB).toString())
         
-        conn = psycopg2.connect(dbname="template1", user=username, host=host, port=port, password=password)
+        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
         if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
         conn.set_isolation_level(0)
         cur = conn.cursor()
@@ -496,7 +496,7 @@ class WPageDBConnect(WizardPage):
         host = str(settings.value(KEY_SERVIDORDB).toString())
         port = int(settings.value(KEY_PORTDB).toString())
         
-        conn = psycopg2.connect(dbname=dbname, user=username, host=host, port=port, password=password)
+        conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password)
         if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
         conn.set_isolation_level(0)
         cur = conn.cursor()
