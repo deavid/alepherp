@@ -151,6 +151,73 @@ class WizardPage(QtGui.QWizardPage):
             
     def validate(self):
         pass
+    
+    def do_something_slow(self, function_ptr, title = u"Trabajando", label = u"Por favor, espere . . ."):
+        result = {}
+        def do_the_slow(function_ptr = function_ptr, result = result):
+            try: 
+                ret = function_ptr()
+                result['value'] = ret
+                result['success'] = True
+                result['error'] = False
+            except Exception, e:
+                result['exception'] = e
+                result['success'] = False
+                result['error'] = True
+                
+        progress = QtGui.QProgressDialog(label, QtCore.QString(), 0,  100, self)
+        progress.setWindowTitle(title)
+        progress.setWindowModality(Qt.WindowModal)
+        number = 0
+
+        thread1 = threading.Thread(target=do_the_slow)
+        thread1.start()
+        thread1.join(0.05)
+        if thread1.isAlive(): progress.show()
+        while thread1.isAlive():
+            number += 1
+            progress.setValue(number)
+            thread1.join(0.02 + 0.01 * number)
+            QtGui.QApplication.processEvents()
+        progress.close()
+        del progress
+        
+        if result['success']: return result['value']
+        else: raise result['exception']
+        
+    @gui_exception_handling
+    def button_create_database_clicked(self, checked):
+        for control in self.controls:
+            control.writeSetting()
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
+        
+        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
+        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        def create_db():
+            try:
+                cur.execute("""CREATE DATABASE "%s" """ % dbname)
+            except psycopg2.Error, e:
+                if e.pgcode == "42P04":
+                    raise ConnectionError(u"La base de datos %s ya existe." % (repr(dbname)))
+                else:
+                    raise ConnectionError(u"Error al crear la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
+        self.do_something_slow(create_db, 
+            title = u"Creando Base de Datos", 
+            label = u"Se está procediendo a crear la base de datos %s . . ." % (repr(dbname))
+            )
+            
+        QtGui.QMessageBox.information(self, u"Creación de base de datos",
+                            u"La creación de la base de datos %s finalizó correctamente." % (repr(dbname)),
+                            QtGui.QMessageBox.Ok,
+                            QtGui.QMessageBox.NoButton
+                            )
+    
 
 class WPageIntroduccion(WizardPage):
     def setup(self):
@@ -259,53 +326,29 @@ class WPageAsistenteConexion2(WizardPage):
         try: port = int(settings.value(KEY_PORTDB).toString())
         except ValueError: raise ValueError(u"El número de puerto no es válido, introduzca sólo números")
         if port <= 0 or port > 65535: raise ValueError(u"El número de puerto no es válido, debe estar entre 1 y 65535")
-        
-        progress = QtGui.QProgressDialog(u"Se está procediendo a conectar por TCP/IP a %s:%d . . ." % (host,port), QtCore.QString(), 0,  100, self);
-        try:
-            progress.setWindowTitle(u"Probando la conexión")
-            progress.setWindowModality(Qt.WindowModal)
-            number = 0
-            def test_conn(resultobj):
-                try:
-                    try:
-                        sck = socket.create_connection( (host, port) , 3)
-                    except socket.error, e:
-                        errno, text = e
-                        raise ConnectionError(u"Error %d al conectar a %s:%d (motivo: %s)" % (errno, host, port, unicode(text,"UTF-8","replace")))
-                    except socket.timeout, e:
-                        text = e
-                        raise ConnectionError(u"Timeout al conectar a %s:%d (motivo: %s)" % (host, port, unicode(text,"UTF-8","replace")))
-                    except socket.herror, e:
-                        errno, text = e
-                        raise ConnectionError(u"Error %d al interpretar el host %s (motivo: %s)" % (errno, host, unicode(text,"UTF-8","replace")))
-                    except socket.gaierror, e:
-                        errno, text = e
-                        raise ConnectionError(u"Error %d al obtener dirección del host %s (motivo: %s)" % (errno, host, unicode(text,"UTF-8","replace")))
-                    try: sck.shutdown(socket.SHUT_RDWR)
-                    except Exception: pass
-                    sck.close()
-                    resultobj.append(True)
-                except Exception, e:
-                    resultobj.append(e)
+        def test_conn():
+            try:
+                sck = socket.create_connection( (host, port) , 3)
+            except socket.error, e:
+                errno, text = e
+                raise ConnectionError(u"Error %d al conectar a %s:%d (motivo: %s)" % (errno, host, port, unicode(text,"UTF-8","replace")))
+            except socket.timeout, e:
+                text = e
+                raise ConnectionError(u"Timeout al conectar a %s:%d (motivo: %s)" % (host, port, unicode(text,"UTF-8","replace")))
+            except socket.herror, e:
+                errno, text = e
+                raise ConnectionError(u"Error %d al interpretar el host %s (motivo: %s)" % (errno, host, unicode(text,"UTF-8","replace")))
+            except socket.gaierror, e:
+                errno, text = e
+                raise ConnectionError(u"Error %d al obtener dirección del host %s (motivo: %s)" % (errno, host, unicode(text,"UTF-8","replace")))
+            try: sck.shutdown(socket.SHUT_RDWR)
+            except Exception: pass
+            sck.close()
 
-            resultobj = []
-            thread1 = threading.Thread(target=test_conn,kwargs={"resultobj" : resultobj})
-            thread1.start()
-            thread1.join(0.1)
-            if thread1.isAlive(): progress.show() # <- mostrar solo si tarda más de 0.1s
-            while thread1.isAlive():
-                thread1.join(0.15)
-                number += 1
-                if number > 100: number = 1
-                progress.setValue(number)
-                QtGui.QApplication.processEvents()
-            
-            result = resultobj[0]
-            if isinstance(result, Exception): raise result
-            
-        finally:
-            progress.close()
-            del progress
+        self.do_something_slow(test_conn, 
+            title = u"Probando la conexión", 
+            label = u"Se está procediendo a conectar por TCP/IP a %s:%d . . ." % (host,port)
+            )
 
             
 class WPageAsistenteConexion3(WizardPage):
@@ -332,7 +375,7 @@ class WPageAsistenteConexion3(WizardPage):
         self.btnCrearDB = QtGui.QPushButton(u"CREATE")
         
         dbName = LabelAndControl(u"&Base de Datos:", "string")
-        self.btnCrearDB.clicked.connect(self.button_create_clicked)
+        self.btnCrearDB.clicked.connect(self.button_create_database_clicked)
         layout.addLayout(HBox(dbName.l,self.btnCrearDB))
 
         label = QtGui.QLabel(u"Especifique el prefijo que desea para las tablas de sistema. "
@@ -355,33 +398,6 @@ class WPageAsistenteConexion3(WizardPage):
             dbName, dbTablePrefix
         ]
         
-    @gui_exception_handling
-    def button_create_clicked(self, checked):
-        for control in self.controls:
-            control.writeSetting()
-        dbname = str(settings.value(KEY_NOMBREDB).toString())
-        username = str(settings.value(KEY_USUARIODB).toString())
-        password = str(settings.value(KEY_PASSWORDDB).toString())
-        host = str(settings.value(KEY_SERVIDORDB).toString())
-        port = int(settings.value(KEY_PORTDB).toString())
-        
-        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
-        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
-        conn.set_isolation_level(0)
-        cur = conn.cursor()
-        try:
-            cur.execute("""CREATE DATABASE "%s" """ % dbname)
-        except psycopg2.Error, e:
-            if e.pgcode == "42P04":
-                raise ConnectionError(u"La base de datos %s ya existe." % (repr(dbname)))
-            else:
-                raise ConnectionError(u"Error al crear la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
-            
-        QtGui.QMessageBox.information(self, u"Creación de base de datos",
-                            u"La creación de la base de datos %s finalizó correctamente." % (repr(dbname)),
-                            QtGui.QMessageBox.Ok,
-                            QtGui.QMessageBox.NoButton
-                            )
     
     def validate(self):
         for control in self.controls:
@@ -432,7 +448,7 @@ class WPageDBConnect(WizardPage):
         self.btnCrearDB = QtGui.QPushButton(u"CREATE")
         
         dbName = LabelAndControl(u"&Base de Datos:", "string")
-        self.btnCrearDB.clicked.connect(self.button_create_clicked)
+        self.btnCrearDB.clicked.connect(self.button_create_database_clicked)
         layout.addLayout(HBox(dbName.l,self.btnCrearDB))
 
         
@@ -457,33 +473,6 @@ class WPageDBConnect(WizardPage):
             dbName, dbTablePrefix
         ]
     
-    @gui_exception_handling
-    def button_create_clicked(self, checked):
-        for control in self.controls:
-            control.writeSetting()
-        dbname = str(settings.value(KEY_NOMBREDB).toString())
-        username = str(settings.value(KEY_USUARIODB).toString())
-        password = str(settings.value(KEY_PASSWORDDB).toString())
-        host = str(settings.value(KEY_SERVIDORDB).toString())
-        port = int(settings.value(KEY_PORTDB).toString())
-        
-        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
-        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
-        conn.set_isolation_level(0)
-        cur = conn.cursor()
-        try:
-            cur.execute("""CREATE DATABASE "%s" """ % dbname)
-        except psycopg2.Error, e:
-            if e.pgcode == "42P04":
-                raise ConnectionError(u"La base de datos %s ya existe." % (repr(dbname)))
-            else:
-                raise ConnectionError(u"Error al crear la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
-            
-        QtGui.QMessageBox.information(self, u"Creación de base de datos",
-                            u"La creación de la base de datos %s finalizó correctamente." % (repr(dbname)),
-                            QtGui.QMessageBox.Ok,
-                            QtGui.QMessageBox.NoButton
-                            )
     def nextId(self):
         return self.parent.pg_conn_completa.page_id
 
