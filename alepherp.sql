@@ -1,6 +1,6 @@
 CREATE TABLE alepherp_envvars
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_envvars_id_seq'::regclass),
+  id serial NOT NULL,
   username character varying(255),
   variable character varying DEFAULT 255,
   data bytea,
@@ -23,7 +23,7 @@ CREATE INDEX alepherp_envvars_variable_idx
 
 CREATE TABLE alepherp_history
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_history_id_seq'::regclass),
+  id serial NOT NULL,
   username character varying(255),
   action character varying(10),
   tablename character varying(255),
@@ -49,7 +49,7 @@ CREATE INDEX alepherp_history_username_idx
 
 CREATE TABLE alepherp_locks
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_locks_id_seq'::regclass),
+  id serial NOT NULL,
   tablename character varying(150),
   username character varying(150),
   pk_serialize character varying(500),
@@ -86,7 +86,7 @@ CREATE OR REPLACE RULE alepherp_locks_notify AS
 
 CREATE TABLE alepherp_persmissions
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_persmissions_id_seq'::regclass),
+  id serial NOT NULL,
   username character varying(255),
   tablename character varying(255),
   permissions character varying(10),
@@ -99,7 +99,7 @@ WITH (
 
 CREATE TABLE alepherp_roles
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_roles_id_seq'::regclass),
+  id serial NOT NULL,
   nombre character varying(255),
   CONSTRAINT alepherp_roles_pkey PRIMARY KEY (id )
 )
@@ -134,7 +134,7 @@ WITH (
 
 CREATE TABLE alepherp_users_roles
 (
-  id integer NOT NULL DEFAULT nextval('alepherp_users_roles_id_seq'::regclass),
+  id serial NOT NULL,
   id_rol integer,
   username character varying(255),
   CONSTRAINT alepherp_users_roles_pkey PRIMARY KEY (id )
