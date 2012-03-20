@@ -172,15 +172,16 @@ class WizardPage(QtGui.QWizardPage):
 
         thread1 = threading.Thread(target=do_the_slow)
         thread1.start()
-        thread1.join(0.05)
+        thread1.join(0.20)
         if thread1.isAlive(): progress.show()
         while thread1.isAlive():
             number += 1
+            if number >= 100: number -= 20
             progress.setValue(number)
-            thread1.join(0.02 + 0.01 * number)
-            QtGui.QApplication.processEvents()
-        progress.close()
-        del progress
+            for i in range(number):
+                thread1.join(20.0 / (101 - number) / number)
+                QtGui.QApplication.processEvents()
+        progress.reset()
         
         if result['success']: return result['value']
         else: raise result['exception']
@@ -189,16 +190,17 @@ class WizardPage(QtGui.QWizardPage):
     def button_create_database_clicked(self, checked):
         for control in self.controls:
             control.writeSetting()
-        dbname = str(settings.value(KEY_NOMBREDB).toString())
-        username = str(settings.value(KEY_USUARIODB).toString())
-        password = str(settings.value(KEY_PASSWORDDB).toString())
-        host = str(settings.value(KEY_SERVIDORDB).toString())
-        port = int(settings.value(KEY_PORTDB).toString())
         
-        conn = psycopg2.connect(database="template1", user=username, host=host, port=port, password=password)
-        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
-        conn.set_isolation_level(0)
-        cur = conn.cursor()
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        
+        self.do_something_slow(lambda: self.test_current_parameters("template1"), 
+            title = u"Conectando", 
+            label = u"Conectando en modo mantenimiento (db: template1) . . ."
+            )
+        
+        cur = self.parent.cur
+        self.parent.cur = None
+        self.parent.conn = None
         def create_db():
             try:
                 cur.execute("""CREATE DATABASE "%s" """ % dbname)
@@ -217,6 +219,24 @@ class WizardPage(QtGui.QWizardPage):
                             QtGui.QMessageBox.Ok,
                             QtGui.QMessageBox.NoButton
                             )
+                            
+    def test_current_parameters(self, dbname = None):
+        if dbname is None: dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
+        try:
+            conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password, connect_timeout=3)
+        except psycopg2.Error, e:
+            if e.pgerror is None: e.pgerror = str(e)
+            raise ConnectionError(u"Error al conectar a la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
+        
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        self.parent.conn = conn
+        self.parent.cur = cur
+                            
     
 
 class WPageIntroduccion(WizardPage):
@@ -234,17 +254,36 @@ class WPageIntroduccion(WizardPage):
         
         self.opt_asistente = QtGui.QRadioButton(u"Iniciar el asistente de conexión")
         self.opt_avanzado = QtGui.QRadioButton(u"Configuración manual")
+        self.opt_omitircfg = QtGui.QRadioButton(u"La conexión ya está correctamente configurada")
+        self.opt_omitircfg.hide()
         self.opt_asistente.setChecked(True)
         layout.addWidget(self.opt_asistente)
         layout.addWidget(self.opt_avanzado)
+        layout.addWidget(self.opt_omitircfg)
         
         self.setLayout(layout)
-    
+        
+    def initializePage(self):
+        QtCore.QTimer.singleShot(100, self.postInitPage)
+        
+    def postInitPage(self):
+        try:
+            self.do_something_slow(self.test_current_parameters, 
+                title = u"Comprobando conexión", 
+                label = u"Se está probando la configuración actual . . ."
+                )
+        except Exception, e:
+            return None
+        self.opt_omitircfg.show()
+        self.opt_omitircfg.setChecked(True)
+            
     def nextId(self):
         if self.opt_asistente.isChecked():
             return self.parent.pg_asist_conn1.page_id
         if self.opt_avanzado.isChecked():
             return self.parent.pg_dbconn.page_id
+        if self.opt_omitircfg.isChecked():
+            return self.parent.pg_conn_completa.page_id
             
 class WPageAsistenteConexion1(WizardPage):
     def setup(self):
@@ -276,7 +315,7 @@ class WPageAsistenteConexion1(WizardPage):
         self.controls = [
             dbTipoConn, dbCodificacion,
         ]
-    
+            
     def validate(self):
         for control in self.controls:
             control.writeSetting()
@@ -397,24 +436,17 @@ class WPageAsistenteConexion3(WizardPage):
             dbUser, dbPassword, 
             dbName, dbTablePrefix
         ]
-        
+        self.setCommitPage(True)
+
     
     def validate(self):
         for control in self.controls:
             control.writeSetting()
 
-        dbname = str(settings.value(KEY_NOMBREDB).toString())
-        username = str(settings.value(KEY_USUARIODB).toString())
-        password = str(settings.value(KEY_PASSWORDDB).toString())
-        host = str(settings.value(KEY_SERVIDORDB).toString())
-        port = int(settings.value(KEY_PORTDB).toString())
-        
-        conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password)
-        if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
-        conn.set_isolation_level(0)
-        cur = conn.cursor()
-        self.parent.conn = conn
-        self.parent.cur = cur
+        self.do_something_slow(self.test_current_parameters, 
+            title = u"Conectando", 
+            label = u"Se está conectando a la base de datos . . ."
+            )
 
 class WPageDBConnect(WizardPage):
     def setup(self):
@@ -472,6 +504,8 @@ class WPageDBConnect(WizardPage):
             dbTipoConn, dbCodificacion,
             dbName, dbTablePrefix
         ]
+        self.setCommitPage(True)
+
     
     def nextId(self):
         return self.parent.pg_conn_completa.page_id
@@ -479,18 +513,11 @@ class WPageDBConnect(WizardPage):
     def validate(self):
         for control in self.controls:
             control.writeSetting()
-        dbname = str(settings.value(KEY_NOMBREDB).toString())
-        username = str(settings.value(KEY_USUARIODB).toString())
-        password = str(settings.value(KEY_PASSWORDDB).toString())
-        host = str(settings.value(KEY_SERVIDORDB).toString())
-        port = int(settings.value(KEY_PORTDB).toString())
-        
-        conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password)
-        if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
-        conn.set_isolation_level(0)
-        cur = conn.cursor()
-        self.parent.conn = conn
-        self.parent.cur = cur
+            
+        self.do_something_slow(self.test_current_parameters, 
+            title = u"Conectando", 
+            label = u"Se está conectando a la base de datos . . ."
+            )
         
 class WPageConexionCompletada(WizardPage):
     def setup(self):
@@ -504,7 +531,9 @@ class WPageConexionCompletada(WizardPage):
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(label)
+        # TODO : Agregar aquí el resto de opciones que son interesantes/convenientes en AlephERP...
         
+        # - - - - - - - - - 
         self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
         self.opt_cargarproyecto = QtGui.QRadioButton(u"Cargar un proyecto inicial")
