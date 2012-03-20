@@ -98,6 +98,25 @@ class LabelAndControl(object):
         
         settings.setValue(key,value)
             
+def gui_exception_handling(fn):
+    def myfn(self, *args,**kwargs):
+        ret = None
+        try:
+            ret = fn(self, *args,**kwargs)
+        except Exception, e:
+            print traceback.format_exc()
+            try: stre = unicode(e)
+            except Exception: 
+                try: stre = unicode(e,"UTF-8","replace")
+                except Exception: stre = repr(e)
+            
+            QtGui.QMessageBox.warning(self, e.__class__.__name__,
+                                stre,
+                                QtGui.QMessageBox.Ok,
+                                QtGui.QMessageBox.NoButton
+                                )
+        return ret
+    return myfn
         
  
 class WizardPage(QtGui.QWizardPage):
@@ -162,7 +181,7 @@ class WPageIntroduccion(WizardPage):
             
 class WPageAsistenteConexion1(WizardPage):
     def setup(self):
-        self.setTitle(u"Asistente de conexión (1 de 6)")
+        self.setTitle(u"Asistente de conexión (1 de 3)")
 
         layout = QtGui.QVBoxLayout()
         textlines = []
@@ -201,7 +220,7 @@ class WPageAsistenteConexion1(WizardPage):
 
 class WPageAsistenteConexion2(WizardPage):
     def setup(self):
-        self.setTitle(u"Asistente de conexión (2 de 6)")
+        self.setTitle(u"Asistente de conexión (2 de 3)")
 
         layout = QtGui.QVBoxLayout()
         textlines = []
@@ -210,6 +229,7 @@ class WPageAsistenteConexion2(WizardPage):
         textlines += [u"AlephERP se conecta a un servidor PostgreSQL para la base de datos. " + 
                 u"Necesita especificar la dirección IP (o hostname) del equipo donde está alojada la base de datos" + 
                 u", así como el número de puerto en el que se puede acceder a la base de datos."]
+        textlines += [u""]
         textlines += [u"Para PostgreSQL el puerto por defecto es el 5432. Si el servidor está funcionando en " + 
                 u"este mismo equipo, puede especificar 'localhost' como Hostname."]
         textlines += [u""]
@@ -244,7 +264,6 @@ class WPageAsistenteConexion2(WizardPage):
         try:
             progress.setWindowTitle(u"Probando la conexión")
             progress.setWindowModality(Qt.WindowModal)
-            progress.show()
             number = 0
             def test_conn(resultobj):
                 try:
@@ -272,8 +291,10 @@ class WPageAsistenteConexion2(WizardPage):
             resultobj = []
             thread1 = threading.Thread(target=test_conn,kwargs={"resultobj" : resultobj})
             thread1.start()
+            thread1.join(0.1)
+            if thread1.isAlive(): progress.show() # <- mostrar solo si tarda más de 0.1s
             while thread1.isAlive():
-                thread1.join(0.1)
+                thread1.join(0.15)
                 number += 1
                 if number > 100: number = 1
                 progress.setValue(number)
@@ -285,7 +306,99 @@ class WPageAsistenteConexion2(WizardPage):
         finally:
             progress.close()
             del progress
+
+            
+class WPageAsistenteConexion3(WizardPage):
+    def setup(self):
+        self.setTitle(u"Asistente de conexión (3 de 3)")
+
+        layout = QtGui.QVBoxLayout()
+        label = QtGui.QLabel(u"Vamos a realizar la conexión con la base de datos. "
+            + u"Indique el usuario y contraseña para autenticarse en el servidor. "
+            + u"Es necesario que tenga permisos de administrador.")
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        dbUser = LabelAndControl(u"&Usuario:", "string")
+        dbPassword = LabelAndControl(u"&Password:", "password")
+               
+        layout.addLayout(HBox(dbUser.l,dbPassword.l))
+
+        label = QtGui.QLabel(u"Especifique el nombre de la base de datos para AlephERP. "
+            + u"Si aún no está creada, el botón <CREATE> creará una vacía. ")
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        self.btnCrearDB = QtGui.QPushButton(u"CREATE")
         
+        dbName = LabelAndControl(u"&Base de Datos:", "string")
+        self.btnCrearDB.clicked.connect(self.button_create_clicked)
+        layout.addLayout(HBox(dbName.l,self.btnCrearDB))
+
+        label = QtGui.QLabel(u"Especifique el prefijo que desea para las tablas de sistema. "
+            + u"Todas las tablas internas de AlephERP quedarán como PREFIJO_nombretabla.")
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        dbTablePrefix = LabelAndControl(u"&Prefijo de Tablas de Sistema:", "string")
+        layout.addLayout(dbTablePrefix.l)
+
+        dbUser.readSetting(KEY_USUARIODB,"postgres")
+        dbPassword.readSetting(KEY_PASSWORDDB,"postgres")
+        dbName.readSetting(KEY_NOMBREDB,"alepherp")
+        dbTablePrefix.readSetting(KEY_SYSTEM_TABLE_PREFIX,"alepherp")
+        
+        self.setLayout(layout)
+        
+        self.controls = [
+            dbUser, dbPassword, 
+            dbName, dbTablePrefix
+        ]
+        
+    @gui_exception_handling
+    def button_create_clicked(self, checked):
+        for control in self.controls:
+            control.writeSetting()
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
+        
+        conn = psycopg2.connect(dbname="template1", user=username, host=host, port=port, password=password)
+        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        try:
+            cur.execute("""CREATE DATABASE "%s" """ % dbname)
+        except psycopg2.Error, e:
+            if e.pgcode == "42P04":
+                raise ConnectionError(u"La base de datos %s ya existe." % (repr(dbname)))
+            else:
+                raise ConnectionError(u"Error al crear la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
+            
+        QtGui.QMessageBox.information(self, u"Creación de base de datos",
+                            u"La creación de la base de datos %s finalizó correctamente." % (repr(dbname)),
+                            QtGui.QMessageBox.Ok,
+                            QtGui.QMessageBox.NoButton
+                            )
+    
+    def validate(self):
+        for control in self.controls:
+            control.writeSetting()
+
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
+        
+        conn = psycopg2.connect(dbname=dbname, user=username, host=host, port=port, password=password)
+        if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        self.parent.conn = conn
+        self.parent.cur = cur
 
 class WPageDBConnect(WizardPage):
     def setup(self):
@@ -307,10 +420,21 @@ class WPageDBConnect(WizardPage):
         
         layout.addLayout(HBox(dbTipoConn.l,dbCodificacion.l))
         
-        dbName = LabelAndControl(u"&Base de Datos:", "string")
-        dbTablePrefix = LabelAndControl(u"&Pref. Tablas:", "string")
+        dbTablePrefix = LabelAndControl(u"&Prefijo de Tablas de sistema:", "string")
         
-        layout.addLayout(HBox(dbName.l,dbTablePrefix.l))
+        layout.addLayout(dbTablePrefix.l)
+
+        label = QtGui.QLabel(u"Especifique el nombre de la base de datos para AlephERP. "
+            + u"Si aún no está creada, el botón <CREATE> creará una vacía. ")
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        self.btnCrearDB = QtGui.QPushButton(u"CREATE")
+        
+        dbName = LabelAndControl(u"&Base de Datos:", "string")
+        self.btnCrearDB.clicked.connect(self.button_create_clicked)
+        layout.addLayout(HBox(dbName.l,self.btnCrearDB))
+
         
         dbHost.readSetting(KEY_SERVIDORDB,"localhost")
         dbPort.readSetting(KEY_PORTDB,"5432")
@@ -333,10 +457,75 @@ class WPageDBConnect(WizardPage):
             dbName, dbTablePrefix
         ]
     
+    @gui_exception_handling
+    def button_create_clicked(self, checked):
+        for control in self.controls:
+            control.writeSetting()
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
+        
+        conn = psycopg2.connect(dbname="template1", user=username, host=host, port=port, password=password)
+        if conn is None: raise ConnectionError("No se pudo conectar para crear la base de datos. Se desconoce el motivo.")
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        try:
+            cur.execute("""CREATE DATABASE "%s" """ % dbname)
+        except psycopg2.Error, e:
+            if e.pgcode == "42P04":
+                raise ConnectionError(u"La base de datos %s ya existe." % (repr(dbname)))
+            else:
+                raise ConnectionError(u"Error al crear la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
+            
+        QtGui.QMessageBox.information(self, u"Creación de base de datos",
+                            u"La creación de la base de datos %s finalizó correctamente." % (repr(dbname)),
+                            QtGui.QMessageBox.Ok,
+                            QtGui.QMessageBox.NoButton
+                            )
+    def nextId(self):
+        return self.parent.pg_conn_completa.page_id
+
     def validate(self):
         for control in self.controls:
             control.writeSetting()
+        dbname = str(settings.value(KEY_NOMBREDB).toString())
+        username = str(settings.value(KEY_USUARIODB).toString())
+        password = str(settings.value(KEY_PASSWORDDB).toString())
+        host = str(settings.value(KEY_SERVIDORDB).toString())
+        port = int(settings.value(KEY_PORTDB).toString())
         
+        conn = psycopg2.connect(dbname=dbname, user=username, host=host, port=port, password=password)
+        if conn is None: raise ConnectionError("No se pudo conectar a la base de datos. Se desconoce el motivo.")
+        conn.set_isolation_level(0)
+        cur = conn.cursor()
+        self.parent.conn = conn
+        self.parent.cur = cur
+        
+class WPageConexionCompletada(WizardPage):
+    def setup(self):
+        self.setTitle(u"Conexión comletada")
+        textlines = []
+        textlines += [u"Se ha podido establecer conexión a la base de datos."]
+        textlines += [u""]
+        textlines += [u"Indique qué acción quiere realizar ahora:"]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(label)
+        
+        self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
+        self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
+        self.opt_cargarproyecto = QtGui.QRadioButton(u"Cargar un proyecto inicial")
+        self.opt_creartablas.setChecked(True)
+        layout.addWidget(self.opt_creartablas)
+        layout.addWidget(self.opt_crearusuario)
+        layout.addWidget(self.opt_cargarproyecto)
+        
+        self.setLayout(layout)
+    
     
 class WizardConfiguradorAlephERP(QtGui.QWizard):
     def __init__(self, *args, **kwargs):
@@ -344,9 +533,11 @@ class WizardConfiguradorAlephERP(QtGui.QWizard):
         self.setWindowTitle(u"Instalador/Configurador de AlephERP")
         
         self.pg_intro = WPageIntroduccion(parent=self)
+        self.pg_dbconn = WPageDBConnect(parent=self)
         self.pg_asist_conn1 = WPageAsistenteConexion1(parent=self)
         self.pg_asist_conn2 = WPageAsistenteConexion2(parent=self)
-        self.pg_dbconn = WPageDBConnect(parent=self)
+        self.pg_asist_conn3 = WPageAsistenteConexion3(parent=self)
+        self.pg_conn_completa = WPageConexionCompletada(parent=self)
         
     
 
