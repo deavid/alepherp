@@ -250,7 +250,9 @@ class WizardPage(QtGui.QWizardPage):
         host = str(settings.value(KEY_SERVIDORDB).toString())
         port = int(settings.value(KEY_PORTDB).toString())
         try:
-            conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password, connect_timeout=3)
+            #conn = psycopg2.connect(database=dbname, user=username, host=host, port=port, password=password, connect_timeout=3)
+            conn = psycopg2.connect("dbname=%s user=%s host=%s port=%s password=%s connect_timeout=%s" % 
+                                    (dbname, username, host,   port,   password,   3) )
         except psycopg2.Error, e:
             if e.pgerror is None: e.pgerror = str(e)
             raise ConnectionError(u"Error al conectar a la base de datos %s. Motivo: %s (%s)" % (repr(dbname), unicode(e.pgerror.strip(),"UTF-8", "replace"), e.pgcode))
