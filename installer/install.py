@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import sys, socket
 from PyQt4 import QtGui, QtCore
-import psycopg2
+import psycopg2, hashlib
 import traceback
 import threading
 import os.path
@@ -110,9 +110,8 @@ class LabelAndControl(object):
                 
         else:
             raise NotImplementedError("No puedo asignar a un tipo de control %s" % (self.w.__class__.__name__))
-
-    def writeSetting(self, key=None):
-        if key is None: key = self.settings_key
+            
+    def value(self):
         value = None
         if isinstance(self.w, QtGui.QLineEdit):
             value = self.w.text()
@@ -120,14 +119,19 @@ class LabelAndControl(object):
             value = self.w.currentText()
         else:
             raise NotImplementedError("No puedo leer de un tipo de control %s" % (self.w.__class__.__name__))
+        return value
         
-        settings.setValue(key,value)
+    def writeSetting(self, key=None):
+        if key is None: key = self.settings_key
+        
+        settings.setValue(key,self.value())
             
-def gui_exception_handling(fn):
+def gui_exception_handling(fn, return_value = "function"):
     def myfn(self, *args,**kwargs):
         ret = None
         try:
             ret = fn(self, *args,**kwargs)
+            if return_value == "success": return True
         except Exception, e:
             print traceback.format_exc()
             try: stre = unicode(e)
@@ -138,15 +142,17 @@ def gui_exception_handling(fn):
             if isinstance(e, KnownError): title = e.error_title
             if isinstance(e, psycopg2.Error):
                 try:
-                    if e.pgerror is None: e = str(e)
+                    if e.pgerror is None: e.pgerror = str(e)
                     stre = unicode(e.pgerror.strip(),"UTF-8", "replace")
-                except Exception: pass
+                except Exception, e: 
+                    print "*>", e
             QtGui.QMessageBox.warning(self, title,
                                 stre,
                                 QtGui.QMessageBox.Ok,
                                 QtGui.QMessageBox.NoButton
                                 )
-        return ret
+            if return_value == "success": return False
+        if return_value == "function": return ret
     return myfn
         
  
@@ -163,22 +169,8 @@ class WizardPage(QtGui.QWizardPage):
         pass
  
     def validatePage(self):
-        try:
-            self.validate()
-            return True
-        except Exception, e:
-            print traceback.format_exc()
-            try: stre = unicode(e)
-            except Exception: 
-                try: stre = unicode(e,"UTF-8","replace")
-                except Exception: stre = repr(e)
-            
-            QtGui.QMessageBox.warning(self, e.__class__.__name__,
-                                stre,
-                                QtGui.QMessageBox.Ok,
-                                QtGui.QMessageBox.NoButton
-                                )
-            return False
+        validate = gui_exception_handling(self.validate.im_func, return_value="success")
+        return validate(self)
             
     def validate(self):
         pass
@@ -582,6 +574,17 @@ class WPageConexionCompletada(WizardPage):
             ]
         self.setLayout(layout)
         
+    def nextId(self):
+        if self.opt_creartablas.isChecked():
+            return self.parent.pg_crea_systbl.page_id
+            
+        if self.opt_crearusuario.isChecked():
+            return self.parent.pg_crea_usuario.page_id
+            
+        if self.opt_cargarproyecto.isChecked():
+            return self.parent.pg_fin.page_id
+            
+        
     def validate(self):
         for control in self.controls:
             control.writeSetting()
@@ -590,6 +593,8 @@ class WPageConexionCompletada(WizardPage):
         QtCore.QTimer.singleShot(100, self.postInitPage)
         
     def postInitPage(self):
+        sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
+
         cur = self.parent.cur
         cur.execute("""
             SELECT table_name, table_type 
@@ -601,7 +606,15 @@ class WPageConexionCompletada(WizardPage):
             self.opt_cargarproyecto.setEnabled(False)
             return
         self.opt_creartablas.setText(u"Crear las tablas de sistema (realizado)")
-        self.opt_crearusuario.setChecked(True) 
+        cur.execute("""
+            SELECT username
+            FROM %s_users
+            """ % sysprefix)
+        if cur.rowcount == 0: 
+            self.opt_crearusuario.setChecked(True) 
+            return
+        self.opt_crearusuario.setText(u"Crear un usuario (realizado)")
+        self.opt_cargarproyecto.setChecked(True)
         
 
 class WPageCrearTablasSistema(WizardPage):
@@ -685,6 +698,47 @@ class WPageCrearTablasSistema(WizardPage):
         self.emit(QtCore.SIGNAL("completeChanged"))
         QtCore.QTimer.singleShot(1000, self.parent.next)
         
+class WPageCrearUsuario(WizardPage):
+    def setup(self):
+        self.setTitle(u"Crear un usuario nuevo")
+
+        layout = QtGui.QVBoxLayout()
+        textlines = []
+        textlines += [u"Para poder autenticarse en AlephERP necesitará al menos un usuario. "
+            + u"Este asistente creará un usuario con su contraseña."]
+        textlines += [u""]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        self.dbUsuario = LabelAndControl(u"&Usuario:", "string")
+        self.dbPassword = LabelAndControl(u"&Password:", "password")
+        
+        layout.addLayout(self.dbUsuario.l)
+        layout.addLayout(self.dbPassword.l)
+        
+        self.setLayout(layout)
+        
+            
+    def validate(self):
+        sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
+        cur = self.parent.cur
+        conn = self.parent.conn
+        user = str(self.dbUsuario.value())
+        passwd = str(self.dbPassword.value())
+        if len(passwd) > 0:
+            passwd = hashlib.md5(passwd).hexdigest()
+        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+        try:
+            cur.execute("""INSERT INTO %s_users (username,password) VALUES(%%s,%%s)""" % sysprefix, [user,passwd])
+            cur.execute("""INSERT INTO %s_permissions (username,tablename,permissions,id_rol) VALUES(%%s,%%s,%%s,%%s)""" % sysprefix, [user,"*","rw",None])
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
+        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        
+        
         
 
 class WPageInstalacionCompletada(WizardPage):
@@ -716,6 +770,7 @@ class WizardConfiguradorAlephERP(QtGui.QWizard):
         self.pg_conn_completa = WPageConexionCompletada(parent=self)
         
         self.pg_crea_systbl = WPageCrearTablasSistema(parent=self)
+        self.pg_crea_usuario = WPageCrearUsuario(parent=self)
         
         
         self.pg_fin = WPageInstalacionCompletada(parent=self)
