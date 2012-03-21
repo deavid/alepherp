@@ -46,6 +46,13 @@ KEY_CODIFICACION_BBDD		= "db/codificacion"
 KEY_ESQUEMA_BBDD			= "db/esquema_bbdd"
 KEY_FILESYSTEM_ENCODING		= "db/filesystem_encoding"
 
+KEY_DEBUGGER_ENABLED		= "generales/debuggerEnabled"
+KEY_TEMP_DIRECTORY			= "generales/DirectorioTemporal"
+KEY_LOOK_AND_FEEL			= "generales/LookAndFeel"
+KEY_FIRST_DAY_OF_WEEK		= "generales/PrimerDiaSemana"
+KEY_CHECK                   = "generales/business"
+
+
 
 settings = QtCore.QSettings(COMPANY,APP_NAME)
 
@@ -129,7 +136,7 @@ def gui_exception_handling(fn):
                 except Exception: stre = repr(e)
             title = e.__class__.__name__
             if isinstance(e, KnownError): title = e.error_title
-            if isinstance(psycopg2.Error):
+            if isinstance(e, psycopg2.Error):
                 try:
                     if e.pgerror is None: e = str(e)
                     stre = unicode(e.pgerror.strip(),"UTF-8", "replace")
@@ -492,9 +499,6 @@ class WPageDBConnect(WizardPage):
         
         layout.addLayout(HBox(dbTipoConn.l,dbCodificacion.l))
         
-        dbTablePrefix = LabelAndControl(u"&Prefijo de Tablas de sistema:", "string")
-        
-        layout.addLayout(dbTablePrefix.l)
 
         label = QtGui.QLabel(u"Especifique el nombre de la base de datos para AlephERP. "
             + u"Si aún no está creada, el botón <CREATE> creará una vacía. ")
@@ -518,7 +522,6 @@ class WPageDBConnect(WizardPage):
         dbCodificacion.readSetting(KEY_CODIFICACION_BBDD,"UTF-8")
         
         dbName.readSetting(KEY_NOMBREDB,"alepherp")
-        dbTablePrefix.readSetting(KEY_SYSTEM_TABLE_PREFIX,"alepherp")
         
         self.setLayout(layout)
         
@@ -526,7 +529,7 @@ class WPageDBConnect(WizardPage):
             dbHost, dbPort,
             dbUser, dbPassword,
             dbTipoConn, dbCodificacion,
-            dbName, dbTablePrefix
+            dbName, 
         ]
         self.setCommitPage(True)
 
@@ -546,18 +549,23 @@ class WPageDBConnect(WizardPage):
 class WPageConexionCompletada(WizardPage):
     def setup(self):
         self.setTitle(u"Conexión comletada")
+        layout = QtGui.QVBoxLayout()
+
+        dbTablePrefix = LabelAndControl(u"&Prefijo de Tablas de sistema:", "string")
+        layout.addLayout(dbTablePrefix.l)
+        
+        dbTmpDir = LabelAndControl(u"&Directorio Temporal:", "string")
+        layout.addLayout(dbTmpDir.l)
+
         textlines = []
         textlines += [u"Se ha podido establecer conexión a la base de datos."]
         textlines += [u""]
         textlines += [u"Indique qué acción quiere realizar ahora:"]
         label = QtGui.QLabel("\n".join(textlines))
         label.setWordWrap(True)
-
-        layout = QtGui.QVBoxLayout()
         layout.addWidget(label)
-        # TODO : Agregar aquí el resto de opciones que son interesantes/convenientes en AlephERP...
-        # TODO : Mover aquí el prefijo de tablas y el esquema de base de datos
-        # - - - - - - - - - 
+        
+
         self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
         self.opt_cargarproyecto = QtGui.QRadioButton(u"Cargar un proyecto inicial")
@@ -565,8 +573,36 @@ class WPageConexionCompletada(WizardPage):
         layout.addWidget(self.opt_creartablas)
         layout.addWidget(self.opt_crearusuario)
         layout.addWidget(self.opt_cargarproyecto)
-        
+
+        dbTablePrefix.readSetting(KEY_SYSTEM_TABLE_PREFIX,"alepherp")
+        dbTmpDir.readSetting(KEY_TEMP_DIRECTORY,"/tmp")
+
+        self.controls = [
+            dbTablePrefix,dbTmpDir
+            ]
         self.setLayout(layout)
+        
+    def validate(self):
+        for control in self.controls:
+            control.writeSetting()
+            
+    def initializePage(self):
+        QtCore.QTimer.singleShot(100, self.postInitPage)
+        
+    def postInitPage(self):
+        cur = self.parent.cur
+        cur.execute("""
+            SELECT table_name, table_type 
+            FROM information_schema.tables 
+            WHERE table_schema not in ('pg_catalog','information_schema') 
+            """)
+        if cur.rowcount == 0: 
+            self.opt_crearusuario.setEnabled(False)
+            self.opt_cargarproyecto.setEnabled(False)
+            return
+        self.opt_creartablas.setText(u"Crear las tablas de sistema (realizado)")
+        self.opt_crearusuario.setChecked(True) 
+        
 
 class WPageCrearTablasSistema(WizardPage):
     def setup(self):
@@ -581,7 +617,7 @@ class WPageCrearTablasSistema(WizardPage):
         layout.addWidget(label)
         layout.addStretch()
         self.progress = QtGui.QProgressBar()
-        self.status = QtGui.QLabel(u"El proceso iniciará al pulsar el botón 'Commit'")
+        self.status = QtGui.QLabel(u"El proceso iniciará en un momento . . .")
         self.status.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         layout.addWidget(self.progress)
         layout.addWidget(self.status)
@@ -589,8 +625,22 @@ class WPageCrearTablasSistema(WizardPage):
         layout.addStretch()
         self.setLayout(layout)
         self.setCommitPage(True)
-
-    def validate(self):
+        self.completed = False
+        
+    def isComplete(self):
+        return self.completed
+        
+    def initializePage(self):
+        QtCore.QTimer.singleShot(100, self.postInitPage)
+        
+    @gui_exception_handling
+    def postInitPage(self):
+        try: self._postInitPage()
+        except Exception, e:  
+            self.status.setText(u"ERROR: " + unicode(str(e),"UTF-8","replace"))
+            raise
+            
+    def _postInitPage(self):
         self.n = 0
         def status(x): self.status.setText(x); QtGui.QApplication.processEvents()
         def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
@@ -602,7 +652,7 @@ class WPageCrearTablasSistema(WizardPage):
             FROM information_schema.tables 
             WHERE table_schema not in ('pg_catalog','information_schema') 
             """)
-        if cur.rowcount > 0: raise DatabaseError(u"La base de datos ya tiene %d tablas. No se continúa." % cur.rowcount)
+        if cur.rowcount > 0: raise DatabaseError(u"La base de datos ya tiene %d tablas." % cur.rowcount)
         status(u"Cargando SQL de inicialización . . . ")
         count_step()
         name_list = []
@@ -629,6 +679,13 @@ class WPageCrearTablasSistema(WizardPage):
             sql = sql.replace('"alepherp_', '"' + sysprefix + "_")
             cur.execute(sql)
             count_step(sz)
+        self.progress.setValue(100)
+        status(u"Creación de tablas de sistema completada")
+        self.completed = True
+        self.emit(QtCore.SIGNAL("completeChanged"))
+        QtCore.QTimer.singleShot(1000, self.parent.next)
+        
+        
 
 class WPageInstalacionCompletada(WizardPage):
     def setup(self):
