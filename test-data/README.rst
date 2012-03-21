@@ -42,7 +42,7 @@ Permisos
 ----------------
 
 Para que nos de acceso a todas las tablas, tenemos que crear un registro en la tabla
-alepherp_persmissions. Asumiendo que el usuario es "root", el registro sería::
+alepherp_permissions. Asumiendo que el usuario es "root", el registro sería::
 
     | id | username | tablename | permissions | id_rol
     |  1 |     root |         * |          rw | NULL

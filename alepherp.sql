@@ -62,14 +62,14 @@ CREATE OR REPLACE RULE "alepherp_locks_notify" AS
     ON DELETE TO "alepherp_locks" DO NOTIFY breaklock;
 
 --:: Crear tabla "permissions"
-CREATE TABLE "alepherp_persmissions"
+CREATE TABLE "alepherp_permissions"
 (
   id serial NOT NULL,
   username character varying(255),
   tablename character varying(255),
   permissions character varying(10),
   id_rol integer,
-  CONSTRAINT "alepherp_persmissions_pkey" PRIMARY KEY (id )
+  CONSTRAINT "alepherp_permissions_pkey" PRIMARY KEY (id )
 );
 
 --:: Crear tabla "roles"

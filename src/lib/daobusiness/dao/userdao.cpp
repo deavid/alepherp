@@ -30,13 +30,13 @@
 
 #define SQL_SELECT_USER "SELECT username, password FROM %1_users WHERE username=:username"
 #define SQL_SELECT_USER_ROLES "SELECT id_rol FROM %1_users_roles WHERE username=:username"
-#define SQL_SELECT_PERMISSIONS_BY_USER "SELECT tablename, permissions FROM %1_persmissions WHERE username=:username"
-#define SQL_SELECT_PERMISSIONS_BY_ROL "SELECT tablename, permissions FROM %1_persmissions WHERE id_rol=:id_rol"
+#define SQL_SELECT_PERMISSIONS_BY_USER "SELECT tablename, permissions FROM %1_permissions WHERE username=:username"
+#define SQL_SELECT_PERMISSIONS_BY_ROL "SELECT tablename, permissions FROM %1_permissions WHERE id_rol=:id_rol"
 #define SQL_CHANGE_PASSWORD "UPDATE %1_users SET password=:password WHERE username=:username"
 
 #define SQL_SELECT_USER_CI "SELECT username, password FROM %1_users WHERE upper(username)=upper(:username)"
 #define SQL_SELECT_USER_ROLES_CI "SELECT id_rol FROM %1_users_roles WHERE upper(username)=upper(:username)"
-#define SQL_SELECT_PERMISSIONS_BY_USER_CI "SELECT tablename, permissions FROM %1_persmissions WHERE upper(username)=upper(:username)"
+#define SQL_SELECT_PERMISSIONS_BY_USER_CI "SELECT tablename, permissions FROM %1_permissions WHERE upper(username)=upper(:username)"
 #define SQL_CHANGE_PASSWORD_CI "UPDATE %1_users SET password=:password WHERE upper(username)=upper(:username)"
 
 UserDAO::UserDAO(QObject *parent) :
