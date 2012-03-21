@@ -5,10 +5,28 @@ from PyQt4 import QtGui, QtCore
 import psycopg2
 import traceback
 import threading
+import os.path
 
-class ConnectionError(Exception):
+def apppath(): return os.path.abspath(os.path.dirname(sys.argv[0]))
+def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
+
+def appdir(x):
+    if os.path.isabs(x): return x
+    else: return os.path.join(filepath(),x)
+
+class KnownError(Exception):
+    """ Clase base para errores conocidos """
+    error_title = u"Error"
+    
+class ConnectionError(KnownError):
     """ Error relacionado con las conexiones
     """
+    error_title = u"Error de Conexión"
+    
+class DatabaseError(KnownError):
+    """ Error relacionado con la base de datos
+    """
+    error_title = u"Error de Base de datos"
 
 Qt = QtCore.Qt
 # Defines copiados desde src/lib/config/configuracion.h
@@ -109,8 +127,14 @@ def gui_exception_handling(fn):
             except Exception: 
                 try: stre = unicode(e,"UTF-8","replace")
                 except Exception: stre = repr(e)
-            
-            QtGui.QMessageBox.warning(self, e.__class__.__name__,
+            title = e.__class__.__name__
+            if isinstance(e, KnownError): title = e.error_title
+            if isinstance(psycopg2.Error):
+                try:
+                    if e.pgerror is None: e = str(e)
+                    stre = unicode(e.pgerror.strip(),"UTF-8", "replace")
+                except Exception: pass
+            QtGui.QMessageBox.warning(self, title,
                                 stre,
                                 QtGui.QMessageBox.Ok,
                                 QtGui.QMessageBox.NoButton
@@ -532,7 +556,7 @@ class WPageConexionCompletada(WizardPage):
         layout = QtGui.QVBoxLayout()
         layout.addWidget(label)
         # TODO : Agregar aquí el resto de opciones que son interesantes/convenientes en AlephERP...
-        
+        # TODO : Mover aquí el prefijo de tablas y el esquema de base de datos
         # - - - - - - - - - 
         self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
@@ -543,7 +567,84 @@ class WPageConexionCompletada(WizardPage):
         layout.addWidget(self.opt_cargarproyecto)
         
         self.setLayout(layout)
-    
+
+class WPageCrearTablasSistema(WizardPage):
+    def setup(self):
+        self.setTitle(u"Crear Tablas de sistema")
+        textlines = []
+        textlines += [u"Se va a proceder a crear las tablas de sistema de AlephERP."]
+        textlines += [u""]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(label)
+        layout.addStretch()
+        self.progress = QtGui.QProgressBar()
+        self.status = QtGui.QLabel(u"El proceso iniciará al pulsar el botón 'Commit'")
+        self.status.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        layout.addWidget(self.progress)
+        layout.addWidget(self.status)
+        
+        layout.addStretch()
+        self.setLayout(layout)
+        self.setCommitPage(True)
+
+    def validate(self):
+        self.n = 0
+        def status(x): self.status.setText(x); QtGui.QApplication.processEvents()
+        def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
+        status(u"Comprobando que la base de datos está vacía . . . ")
+        count_step()
+        cur = self.parent.cur 
+        cur.execute("""
+            SELECT table_name, table_type 
+            FROM information_schema.tables 
+            WHERE table_schema not in ('pg_catalog','information_schema') 
+            """)
+        if cur.rowcount > 0: raise DatabaseError(u"La base de datos ya tiene %d tablas. No se continúa." % cur.rowcount)
+        status(u"Cargando SQL de inicialización . . . ")
+        count_step()
+        name_list = []
+        sql_list = []
+        current_sql = []
+        for line in open(appdir("../alepherp.sql")):
+            line = line.strip()
+            if line.startswith("--::"):
+                comment = line.replace("--::","").strip()
+                if name_list: 
+                    sql_list.append("\n".join(current_sql))
+                current_sql = []
+                name_list.append(unicode(comment,"UTF-8","replace"))
+            if line.startswith("--"): continue
+            current_sql.append(line)
+            
+        sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
+            
+        count = len(name_list)
+        sz = 80 / count
+        
+        for name, sql in zip(name_list, sql_list):
+            status(name)
+            sql = sql.replace('"alepherp_', '"' + sysprefix + "_")
+            cur.execute(sql)
+            count_step(sz)
+
+class WPageInstalacionCompletada(WizardPage):
+    def setup(self):
+        self.setTitle(u"Instalacion comletada")
+        textlines = []
+        textlines += [u"La instalación y configuración inicial ha finalizado satisfactoriamente."]
+        textlines += [u""]
+        textlines += [u"Ejecute ./build/bin/alepherp para empezar a trabajar."]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(label)
+        
+        self.setLayout(layout)
+
     
 class WizardConfiguradorAlephERP(QtGui.QWizard):
     def __init__(self, *args, **kwargs):
@@ -557,6 +658,10 @@ class WizardConfiguradorAlephERP(QtGui.QWizard):
         self.pg_asist_conn3 = WPageAsistenteConexion3(parent=self)
         self.pg_conn_completa = WPageConexionCompletada(parent=self)
         
+        self.pg_crea_systbl = WPageCrearTablasSistema(parent=self)
+        
+        
+        self.pg_fin = WPageInstalacionCompletada(parent=self)
     
 
 def main():
