@@ -756,6 +756,7 @@ class WPageConexionCompletada(WizardPage):
         if cur.rowcount == 0: 
             self.opt_crearusuario.setEnabled(False)
             self.opt_cargarproyecto.setEnabled(False)
+            self.opt_mantenimiento.setEnabled(False)
             return
         self.opt_creartablas.setText(u"Crear las tablas de sistema (realizado)")
         cur.execute("""
@@ -1078,13 +1079,13 @@ class WPageMantenimientoProyecto(WizardPage):
                 WHERE table_schema not in ('pg_catalog','information_schema') 
                 """)
             dbtables = [ table for (table,) in cur ]
-            
-            cur.execute("""
+            curTablas = self.parent.conn.cursor()
+            curTablas.execute("""
                 SELECT nombre, contenido
                 FROM %s_system WHERE type = 'table'
                 """ % sysprefix)
             
-            for (nombre, contenido) in cur:
+            for (nombre, contenido) in curTablas:
                 xmltable = parseTable(nombre,contenido)
                 if nombre in dbtables:
                     status(u"Creando tablas nuevas y Analizando las existentes ( revisando %s . . . )" % (repr(nombre)))
@@ -1092,7 +1093,7 @@ class WPageMantenimientoProyecto(WizardPage):
                 else:
                     status(u"Creando tablas nuevas y Analizando las existentes ( creando %s . . . )" % (repr(nombre)))
                     create_table(cur, xmltable)
-            
+            curTablas.close()
             # ----
             count_step(stepsz)
         
