@@ -2,10 +2,14 @@
 # -*- coding: utf-8 -*-
 import sys, socket
 from PyQt4 import QtGui, QtCore
-import psycopg2, hashlib
+import psycopg2
+import hashlib
+import time
+import subprocess
 import traceback
 import threading
 import os.path
+from lxml import etree
 
 def apppath(): return os.path.abspath(os.path.dirname(sys.argv[0]))
 def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
@@ -13,7 +17,6 @@ def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
 def appdir(x):
     if os.path.isabs(x): return x
     else: return os.path.join(filepath(),x)
-
 class Struct(object):
     """ Clase básica para almacenar propiedades al azar, tipo estructura """
 
@@ -30,6 +33,10 @@ class DatabaseError(KnownError):
     """ Error relacionado con la base de datos
     """
     error_title = u"Error de Base de datos"
+
+class TaskDroppedDueTimeoutError(KnownError):
+    """ Tarea con progreso se ha dejado de atender porque tardaba demasiado """
+    error_title = u"Expiró el tiepo de espera"
 
 Qt = QtCore.Qt
 # Defines copiados desde src/lib/config/configuracion.h
@@ -204,8 +211,9 @@ class WizardPage(QtGui.QWizardPage):
     def validate(self):
         pass
     
-    def do_something_slow(self, function_ptr, title = u"Trabajando", label = u"Por favor, espere . . ."):
+    def do_something_slow(self, function_ptr, title = u"Trabajando", label = u"Por favor, espere . . .", drop_after = None):
         result = {}
+        tstart = time.time()
         def do_the_slow(function_ptr = function_ptr, result = result):
             try: 
                 ret = function_ptr()
@@ -224,15 +232,18 @@ class WizardPage(QtGui.QWizardPage):
 
         thread1 = threading.Thread(target=do_the_slow)
         thread1.start()
-        thread1.join(0.20)
+        thread1.join(0.10)
         if thread1.isAlive(): progress.show()
         while thread1.isAlive():
             number += 1
             if number >= 100: number -= 20
             progress.setValue(number)
             for i in range(number):
-                thread1.join(20.0 / (101 - number) / number)
+                thread1.join(10.0 / (101 - number) / number)
                 QtGui.QApplication.processEvents()
+            if drop_after and time.time() - tstart > drop_after:
+                progress.reset()
+                raise TaskDroppedDueTimeoutError(u"La tarea tarda demasiado, se cierra el progreso pero sigue trabajando en 2do plano")
         progress.reset()
         
         if result['success']: return result['value']
@@ -655,7 +666,15 @@ class WPageConexionCompletada(WizardPage):
             self.opt_crearusuario.setChecked(True) 
             return
         self.opt_crearusuario.setText(u"Crear un usuario (realizado)")
-        self.opt_cargarproyecto.setChecked(True)
+        cur.execute("""
+            SELECT nombre, version
+            FROM %s_system
+            """ % sysprefix)
+        if cur.rowcount == 0: 
+            self.opt_cargarproyecto.setChecked(True)
+            return
+        self.opt_cargarproyecto.setText(u"Cargar proyecto inicial (realizado)")
+        self.opt_mantenimiento.setChecked(True)
         
 
 class WPageCrearTablasSistema(WizardPage):
@@ -881,7 +900,7 @@ class WPageCargarProyecto(WizardPage):
                 """ % sysprefix, [filename, open(obj.path).read(), obj.ftype, next_version])
             count_step(stepsz)
         
-        status(u"Proceso completado. El proyecto ha sido cargado.")
+        status(u"Proceso completado. El proyecto ha sido cargado con versión %d." % next_version)
         end_step()
         self.completed = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
@@ -901,16 +920,13 @@ class WPageMantenimientoProyecto(WizardPage):
 
         self.opCrearTablas = QtGui.QCheckBox(u"Crear tablas nuevas")
         self.opAnalizarTablas = QtGui.QCheckBox(u"Analizar validez de las tablas existentes")
-        self.opIncVersion = QtGui.QCheckBox(u"Incrementar la versión de los ficheros")
         self.opResetCache = QtGui.QCheckBox(u"Resetear Caché de AlephERP")
         self.opCrearTablas.setChecked(True)
         self.opAnalizarTablas.setChecked(True)
-        self.opIncVersion.setChecked(True)
         self.opResetCache.setChecked(True)
         
         layout.addWidget(self.opCrearTablas)
         layout.addWidget(self.opAnalizarTablas)
-        layout.addWidget(self.opIncVersion)
         layout.addWidget(self.opResetCache)
 
         layout.addSpacing(8)
@@ -946,7 +962,15 @@ class WPageMantenimientoProyecto(WizardPage):
     
     @gui_exception_handling
     def btnIniciar_clicked(self, checked=None):
-        print "Iniciando proceso . . . ", self.__class__.__name__
+        self.n = 0
+        def status(x): self.status.setText(x); QtGui.QApplication.processEvents()
+        def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
+        def end_step(): self.n = 100; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
+        status(u"Analizando la carpeta del proyecto . . . ")
+        count_step()
+        
+        status(u"Todas las operaciones solicitadas han sido realizadas.")
+        end_step()
         self.completed = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
         
@@ -968,7 +992,27 @@ class WPageInstalacionCompletada(WizardPage):
         layout = QtGui.QVBoxLayout()
         layout.addWidget(label)
         
+        self.opIniciarAlephERP = QtGui.QCheckBox(u"Iniciar AlephERP ahora")
+        self.opIniciarAlephERP.setChecked(True)
+        
+        layout.addWidget(self.opIniciarAlephERP)
+
         self.setLayout(layout)
+        
+    def validate(self):
+        if self.opIniciarAlephERP.isChecked(): self.iniciar_alepherp()
+        
+    def iniciar_alepherp(self):
+        def _iniciar_aleph_erp():
+            return subprocess.call([appdir("../build/bin/alepherp")])
+        opened = False
+        ret = None
+        try:
+            ret = self.do_something_slow(_iniciar_aleph_erp, title = u"Iniciando AlephERP", drop_after = 2)
+        except TaskDroppedDueTimeoutError:
+            opened = True
+        if not opened: raise KnownError("No se ha podido iniciar AlephERP")
+        
 
     
 class WizardConfiguradorAlephERP(QtGui.QWizard):
