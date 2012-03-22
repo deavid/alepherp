@@ -14,6 +14,9 @@ def appdir(x):
     if os.path.isabs(x): return x
     else: return os.path.join(filepath(),x)
 
+class Struct(object):
+    """ Clase básica para almacenar propiedades al azar, tipo estructura """
+
 class KnownError(Exception):
     """ Clase base para errores conocidos """
     error_title = u"Error"
@@ -52,7 +55,13 @@ KEY_LOOK_AND_FEEL			= "generales/LookAndFeel"
 KEY_FIRST_DAY_OF_WEEK		= "generales/PrimerDiaSemana"
 KEY_CHECK                   = "generales/business"
 
+# Otros (definiciones propias)
 
+KNOWN_FOLDERS = {  # Traduccion de nombre de carpeta a tipo
+    "forms" : "ui",
+    "scripts" : "qs",
+    "tables" : "table",
+}
 
 settings = QtCore.QSettings(COMPANY,APP_NAME)
 
@@ -95,9 +104,8 @@ class LabelAndControl(object):
         if self.fieldtype == "password": 
             self.w.setEchoMode(QtGui.QLineEdit.Password)
     
-    def readSetting(self, key, defaultvalue=None):
-        self.settings_key = key
-        variant = settings.value(key,defaultvalue)
+    def setValue(self, qvalue):
+        variant = QtCore.QVariant(qvalue)
         if isinstance(self.w, QtGui.QLineEdit):
             value = variant.toString()
             self.w.setText(value)
@@ -112,6 +120,11 @@ class LabelAndControl(object):
                 
         else:
             raise NotImplementedError("No puedo asignar a un tipo de control %s" % (self.w.__class__.__name__))
+    
+    def readSetting(self, key, defaultvalue=None):
+        self.settings_key = key
+        variant = settings.value(key,defaultvalue)
+        self.setValue(variant)
             
     def value(self):
         value = None
@@ -157,6 +170,20 @@ def gui_exception_handling(fn, return_value = "function"):
         if return_value == "function": return ret
     return myfn
         
+def transaction_handling(fn):
+    def myfn(self, *args,**kwargs):
+        conn = self.parent.conn
+        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+        try:
+            ret = fn(self, *args,**kwargs)
+            conn.commit()
+            return ret
+        except:
+            conn.rollback()
+            raise
+        finally:
+            conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    return myfn
  
 class WizardPage(QtGui.QWizardPage):
     def __init__(self, *args, **kwargs):
@@ -565,9 +592,12 @@ class WPageConexionCompletada(WizardPage):
         self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
         self.opt_cargarproyecto = QtGui.QRadioButton(u"Cargar un proyecto inicial")
+        self.opt_mantenimiento = QtGui.QRadioButton(u"Realizar operaciones de mantenimiento")
+        
         layout.addWidget(self.opt_creartablas)
         layout.addWidget(self.opt_crearusuario)
         layout.addWidget(self.opt_cargarproyecto)
+        layout.addWidget(self.opt_mantenimiento)
 
         dbTablePrefix.readSetting(KEY_SYSTEM_TABLE_PREFIX,"alepherp")
         dbTmpDir.readSetting(KEY_TEMP_DIRECTORY,"/tmp")
@@ -587,6 +617,9 @@ class WPageConexionCompletada(WizardPage):
         if self.opt_cargarproyecto.isChecked():
             return self.parent.pg_cargar_proyecto.page_id
             
+        if self.opt_mantenimiento.isChecked():
+            return self.parent.pg_mantenimiento.page_id
+            
         
     def validate(self):
         for control in self.controls:
@@ -596,6 +629,7 @@ class WPageConexionCompletada(WizardPage):
         self.opt_creartablas.setText(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario.setText(u"Crear un usuario de administración")
         self.opt_cargarproyecto.setText(u"Cargar un proyecto inicial")
+        self.opt_mantenimiento.setText(u"Realizar operaciones de mantenimiento")
         self.opt_creartablas.setChecked(True)
         QtCore.QTimer.singleShot(100, self.postInitPage)
         
@@ -702,7 +736,7 @@ class WPageCrearTablasSistema(WizardPage):
         self.progress.setValue(100)
         status(u"Creación de tablas de sistema completada")
         self.completed = True
-        self.emit(QtCore.SIGNAL("completeChanged"))
+        self.emit(QtCore.SIGNAL("completeChanged()"))
         QtCore.QTimer.singleShot(1000, self.parent.next)
         
 class WPageCrearUsuario(WizardPage):
@@ -727,6 +761,7 @@ class WPageCrearUsuario(WizardPage):
         self.setLayout(layout)
         
             
+    @transaction_handling
     def validate(self):
         sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
         cur = self.parent.cur
@@ -735,15 +770,8 @@ class WPageCrearUsuario(WizardPage):
         passwd = str(self.dbPassword.value())
         if len(passwd) > 0:
             passwd = hashlib.md5(passwd).hexdigest()
-        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
-        try:
-            cur.execute("""INSERT INTO %s_users (username,password) VALUES(%%s,%%s)""" % sysprefix, [user,passwd])
-            cur.execute("""INSERT INTO %s_permissions (username,tablename,permissions,id_rol) VALUES(%%s,%%s,%%s,%%s)""" % sysprefix, [user,"*","rw",None])
-            conn.commit()
-        except:
-            conn.rollback()
-            raise
-        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        cur.execute("""INSERT INTO %s_users (username,password) VALUES(%%s,%%s)""" % sysprefix, [user,passwd])
+        cur.execute("""INSERT INTO %s_permissions (username,tablename,permissions,id_rol) VALUES(%%s,%%s,%%s,%%s)""" % sysprefix, [user,"*","rw",None])
         
 
 class WPageCargarProyecto(WizardPage):
@@ -759,6 +787,7 @@ class WPageCargarProyecto(WizardPage):
         layout.addWidget(label)
 
         self.dbProyecto = LabelAndControl(u"&Proyecto a cargar:", "string")
+        self.dbProyecto.setValue(os.path.realpath(appdir("../test-data")))
         
         layout.addLayout(self.dbProyecto.l)
         self.btnIniciar = QtGui.QPushButton(" - Iniciar proceso - ")
@@ -792,8 +821,68 @@ class WPageCargarProyecto(WizardPage):
     def isComplete(self):
         return self.completed
     
-    def btnIniciar_clicked(self):
-        print "Iniciando proceso . . . ", self.__class__.__name__
+    @gui_exception_handling # Gui exception handling tiene que ir la ultima porque se come la excepción
+    @transaction_handling 
+    def btnIniciar_clicked(self, checked=None):
+        self.n = 0
+        def status(x): self.status.setText(x); QtGui.QApplication.processEvents()
+        def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
+        def end_step(): self.n = 100; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
+        status(u"Analizando la carpeta del proyecto . . . ")
+        count_step()
+        app_folder = str(self.dbProyecto.value())
+        conn = self.parent.conn
+        cur = self.parent.cur
+        sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
+
+        if not os.path.exists(app_folder): raise ValueError(u"La carpeta especificada no existe")
+        if not os.path.isdir(app_folder): raise ValueError(u"La carpeta especificada no es una carpeta")
+        folders = [ x for x in os.listdir(app_folder) if os.path.isdir(os.path.join(app_folder,x)) ]
+        file_upload_list = {}
+        for fname in folders:
+            ftype = KNOWN_FOLDERS.get(fname,None)
+            if ftype is None: continue # ignorar las carpetas que no conocemos
+            for filename in os.listdir(os.path.join(app_folder,fname)):
+                file_obj = Struct()
+                file_obj.name = filename
+                file_obj.ftype = ftype
+                file_obj.path = os.path.join(app_folder,fname,filename)
+                file_upload_list[filename] = file_obj
+        
+        if len(file_upload_list) == 0: raise ValueError(u"No hay ningún fichero de proyecto aquí.")
+        
+        status(u"Obteniendo la lista de versiones subidas actualmente . . . ")
+        count_step()
+        max_version = 0
+        cur.execute("""
+            SELECT nombre, version
+            FROM %s_system
+            """ % sysprefix)
+        uploaded_files = {}
+        for (nombre, version) in cur:
+            if version > max_version: max_version = version
+            uploaded_files[nombre] = version
+        next_version = max_version + 1
+
+        status(u"Borrando ficheros anteriores . . . ")
+        stepsz = 20/(len(uploaded_files)+1)
+        for filename in uploaded_files.keys():
+            cur.execute("""
+                DELETE FROM %s_system WHERE nombre = %%s
+                """ % sysprefix, [filename])
+            count_step(stepsz)
+
+        status(u"Subiendo ficheros . . . ")
+        stepsz = 60/(len(file_upload_list))
+        for filename, obj in file_upload_list.items():
+            cur.execute("""
+                INSERT INTO %s_system (nombre,contenido,type,version) 
+                VALUES ( %%s,  %%s,  %%s,  %%s )
+                """ % sysprefix, [filename, open(obj.path).read(), obj.ftype, next_version])
+            count_step(stepsz)
+        
+        status(u"Proceso completado. El proyecto ha sido cargado.")
+        end_step()
         self.completed = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
         
@@ -855,7 +944,8 @@ class WPageMantenimientoProyecto(WizardPage):
     def isComplete(self):
         return self.completed
     
-    def btnIniciar_clicked(self):
+    @gui_exception_handling
+    def btnIniciar_clicked(self, checked=None):
         print "Iniciando proceso . . . ", self.__class__.__name__
         self.completed = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
