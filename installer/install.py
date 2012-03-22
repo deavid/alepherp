@@ -61,7 +61,9 @@ def HBox(*widgets,**kwargs):
     haligment = list(kwargs.get("halign","")+ "0" * len(widgets))[:len(widgets)]
         
     for w,ha in zip(widgets,haligment):
-        if isinstance(w, QtGui.QLayout):
+        if w is None:
+            layout.addStretch()
+        elif isinstance(w, QtGui.QLayout):
             layout.addLayout(w)
         else:
             align = 0
@@ -563,7 +565,6 @@ class WPageConexionCompletada(WizardPage):
         self.opt_creartablas = QtGui.QRadioButton(u"Crear las tablas de sistema de AlephERP")
         self.opt_crearusuario = QtGui.QRadioButton(u"Crear un usuario de administración")
         self.opt_cargarproyecto = QtGui.QRadioButton(u"Cargar un proyecto inicial")
-        self.opt_creartablas.setChecked(True)
         layout.addWidget(self.opt_creartablas)
         layout.addWidget(self.opt_crearusuario)
         layout.addWidget(self.opt_cargarproyecto)
@@ -584,7 +585,7 @@ class WPageConexionCompletada(WizardPage):
             return self.parent.pg_crea_usuario.page_id
             
         if self.opt_cargarproyecto.isChecked():
-            return self.parent.pg_fin.page_id
+            return self.parent.pg_cargar_proyecto.page_id
             
         
     def validate(self):
@@ -592,6 +593,10 @@ class WPageConexionCompletada(WizardPage):
             control.writeSetting()
             
     def initializePage(self):
+        self.opt_creartablas.setText(u"Crear las tablas de sistema de AlephERP")
+        self.opt_crearusuario.setText(u"Crear un usuario de administración")
+        self.opt_cargarproyecto.setText(u"Cargar un proyecto inicial")
+        self.opt_creartablas.setChecked(True)
         QtCore.QTimer.singleShot(100, self.postInitPage)
         
     def postInitPage(self):
@@ -740,7 +745,124 @@ class WPageCrearUsuario(WizardPage):
             raise
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
         
+
+class WPageCargarProyecto(WizardPage):
+    def setup(self):
+        self.setTitle(u"Cargar un proyecto inicial")
+
+        layout = QtGui.QVBoxLayout()
+        textlines = []
+        textlines += [u"Para iniciar AlephERP necesitará al menos cargar un proyecto mínimo."]
+        textlines += [u""]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        self.dbProyecto = LabelAndControl(u"&Proyecto a cargar:", "string")
         
+        layout.addLayout(self.dbProyecto.l)
+        self.btnIniciar = QtGui.QPushButton(" - Iniciar proceso - ")
+        self.btnIniciar.setDefault(True)
+        self.btnIniciar.setAutoDefault(True)
+        self.btnIniciar.clicked.connect(self.btnIniciar_clicked)
+        layout.addSpacing(8)
+        layout.addLayout(HBox(None,self.btnIniciar))
+        
+        layout.addStretch()
+        self.progress = QtGui.QProgressBar()
+        self.status = QtGui.QLabel(u"")
+        self.status.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        layout.addWidget(self.progress)
+        layout.addWidget(self.status)
+        
+        layout.addStretch()
+        
+        self.setLayout(layout)
+        self.setCommitPage(True)
+        self.completed = False
+
+    def initializePage(self):
+        QtCore.QTimer.singleShot(100, self.postInitPage)
+        
+    @gui_exception_handling
+    def postInitPage(self):
+        self.btnIniciar.setDefault(True)
+        self.btnIniciar.setAutoDefault(True)
+        
+    def isComplete(self):
+        return self.completed
+    
+    def btnIniciar_clicked(self):
+        print "Iniciando proceso . . . ", self.__class__.__name__
+        self.completed = True
+        self.emit(QtCore.SIGNAL("completeChanged()"))
+        
+
+class WPageMantenimientoProyecto(WizardPage):
+    def setup(self):
+        self.setTitle(u"Realizar operaciones de mantenimiento")
+
+        layout = QtGui.QVBoxLayout()
+        textlines = []
+        textlines += [u"Si el proyecto ha cambiado es conveniente realizar ciertas operaciones de mantenimiento."]
+        textlines += [u""]
+        label = QtGui.QLabel("\n".join(textlines))
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        self.opCrearTablas = QtGui.QCheckBox(u"Crear tablas nuevas")
+        self.opAnalizarTablas = QtGui.QCheckBox(u"Analizar validez de las tablas existentes")
+        self.opIncVersion = QtGui.QCheckBox(u"Incrementar la versión de los ficheros")
+        self.opResetCache = QtGui.QCheckBox(u"Resetear Caché de AlephERP")
+        self.opCrearTablas.setChecked(True)
+        self.opAnalizarTablas.setChecked(True)
+        self.opIncVersion.setChecked(True)
+        self.opResetCache.setChecked(True)
+        
+        layout.addWidget(self.opCrearTablas)
+        layout.addWidget(self.opAnalizarTablas)
+        layout.addWidget(self.opIncVersion)
+        layout.addWidget(self.opResetCache)
+
+        layout.addSpacing(8)
+        self.btnIniciar = QtGui.QPushButton(" - Iniciar proceso - ")
+        self.btnIniciar.setDefault(True)
+        self.btnIniciar.setAutoDefault(True)
+        self.btnIniciar.clicked.connect(self.btnIniciar_clicked)
+        layout.addLayout(HBox(None,self.btnIniciar))
+        
+        layout.addStretch()
+        self.progress = QtGui.QProgressBar()
+        self.status = QtGui.QLabel(u"")
+        self.status.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        layout.addWidget(self.progress)
+        layout.addWidget(self.status)
+        
+        layout.addStretch()
+        
+        self.setLayout(layout)
+        self.setCommitPage(True)
+        self.completed = False
+
+    def initializePage(self):
+        QtCore.QTimer.singleShot(100, self.postInitPage)
+        
+    @gui_exception_handling
+    def postInitPage(self):
+        self.btnIniciar.setDefault(True)
+        self.btnIniciar.setAutoDefault(True)
+        
+    def isComplete(self):
+        return self.completed
+    
+    def btnIniciar_clicked(self):
+        print "Iniciando proceso . . . ", self.__class__.__name__
+        self.completed = True
+        self.emit(QtCore.SIGNAL("completeChanged()"))
+        
+            
+        
+                
         
 
 class WPageInstalacionCompletada(WizardPage):
@@ -773,7 +895,8 @@ class WizardConfiguradorAlephERP(QtGui.QWizard):
         
         self.pg_crea_systbl = WPageCrearTablasSistema(parent=self)
         self.pg_crea_usuario = WPageCrearUsuario(parent=self)
-        
+        self.pg_cargar_proyecto = WPageCargarProyecto(parent=self)
+        self.pg_mantenimiento = WPageMantenimientoProyecto(parent=self)
         
         self.pg_fin = WPageInstalacionCompletada(parent=self)
     
