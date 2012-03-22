@@ -874,6 +874,7 @@ class WPageCrearUsuario(WizardPage):
 
         self.dbUsuario = LabelAndControl(u"&Usuario:", "string")
         self.dbPassword = LabelAndControl(u"&Password:", "password")
+        self.dbUsuario.setValue("root")
         
         layout.addLayout(self.dbUsuario.l)
         layout.addLayout(self.dbPassword.l)
@@ -887,6 +888,8 @@ class WPageCrearUsuario(WizardPage):
         cur = self.parent.cur
         conn = self.parent.conn
         user = str(self.dbUsuario.value())
+        if len(user) < 3:
+            raise ValueError(u"El usuario tiene que tener al menos 3 carácteres")
         passwd = str(self.dbPassword.value())
         if len(passwd) > 0:
             passwd = hashlib.md5(passwd).hexdigest()
@@ -973,7 +976,7 @@ class WPageCargarProyecto(WizardPage):
         
         status(u"Obteniendo la lista de versiones subidas actualmente . . . ")
         count_step()
-        max_version = 0
+        max_version = 1 # AlephERP tiene un bug con la version 1, asi que la primera sera la version 2
         cur.execute("""
             SELECT nombre, version
             FROM %s_system
