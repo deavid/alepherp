@@ -9,7 +9,9 @@ import subprocess
 import traceback
 import threading
 import os.path
+import re
 from lxml import etree
+from StringIO import StringIO
 
 def apppath(): return os.path.abspath(os.path.dirname(sys.argv[0]))
 def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
@@ -62,6 +64,9 @@ KEY_LOOK_AND_FEEL			= "generales/LookAndFeel"
 KEY_FIRST_DAY_OF_WEEK		= "generales/PrimerDiaSemana"
 KEY_CHECK                   = "generales/business"
 
+# database.cpp Database::systemDatabaseName()
+SYSTEM_DATABASE_NAME        = "AlephERPSystem"
+
 # Otros (definiciones propias)
 
 KNOWN_FOLDERS = {  # Traduccion de nombre de carpeta a tipo
@@ -90,6 +95,94 @@ def HBox(*widgets,**kwargs):
             if ha == "j": align += Qt.AlignJustify
             layout.addWidget(w, stretch, Qt.Alignment(align))
     return layout
+    
+def parseTable(nombre, contenido, encoding = "UTF-8", remove_blank_text = True):
+    file_alike = StringIO(contenido)
+
+    parser = etree.XMLParser(
+                    ns_clean=True,
+                    encoding=encoding,
+                    recover=False,
+                    remove_blank_text=remove_blank_text,
+                    )
+    tree = etree.parse(file_alike, parser)
+    root = tree.getroot()
+    
+    objname = root.xpath("name")[0]
+    if objname.text != nombre: 
+        print "WARN: Nombre de tabla %s no coincide con el nombre declarado en el XML %s (se prioriza el nombre de tabla)" % (objname.text,nombre)
+        objname.text = nombre
+    return root
+
+def text2bool(text):
+    text = text.strip().lower()
+    if text.startswith("t"): return True
+    if text.startswith("f"): return False
+    
+    if text.startswith("y"): return True
+    if text.startswith("n"): return False
+
+    if text.startswith("1"): return True
+    if text.startswith("0"): return False
+    
+    if text == "on": return True
+    if text == "off": return False
+
+    if text.startswith("s"): return True
+    raise ValueError("Valor booleano no comprendido '%s'" % text)
+
+def one(listobj, default = None):
+    try: return listobj[0]
+    except IndexError: return default
+    
+
+def update_table(cur, xmltable):
+    pass
+
+def create_table(cur, xmltable):
+    tabla = Struct()
+    tabla.nombre = xmltable.xpath("name/text()")[0]
+    tabla.fields = []
+    tabla.pk = []
+    tabla.idxfields = {}
+    print "CREATE TABLE", tabla.nombre, "("
+    for xmlfield in xmltable.xpath("field"):
+        field = Struct()
+        field.nombre = xmlfield.xpath("name/text()")[0]
+        field.sqltype = build_field_type(xmlfield)
+        field.pk = text2bool(one(xmlfield.xpath("pk/text()"),"false"))
+        if field.pk: tabla.pk.append(field.nombre)
+        if field.nombre in tabla.idxfields: raise ValueError("La tabla %s tiene el campo %s repetido" % (tabla.nombre,field.nombre))
+        tabla.idxfields[field.nombre] = len(tabla.fields)
+        tabla.fields.append(field)
+        print "  ", field.nombre, field.sqltype, ","
+    print "  ", "PRIMARY KEY (", ", ".join(tabla.pk), ")"
+    print ")"
+
+def build_field_type(xmlfield):
+    typetr={
+        'string'    : 'character varying',
+        'double'    : 'double precision',
+        'number'    : 'integer',
+        'int'       : 'integer',
+        'uint'      : 'integer',
+        'unit'      : 'smallint',
+        'stringlist': 'text',
+        'pixmap'    : 'text',
+        'unlock'    : 'boolean',
+        'serial'    : 'serial',
+        'bool'      : 'bool',
+        'date'      : 'date',
+        'time'      : 'time',
+        'bytearray' : 'bytea',
+    }
+    mtd_type = one(xmlfield.xpath("type/text()"),"string")
+    nullable = text2bool(one(xmlfield.xpath("null/text()"),"true"))
+    length = int(one(xmlfield.xpath("length/text()"),"64"))
+    sql_type = typetr.get(mtd_type,mtd_type)
+    if sql_type == "character varying": sql_type += "(%d)" % length
+    sql_nullable = "" if nullable else " NOT NULL"
+    return sql_type + sql_nullable
     
 class LabelAndControl(object):
     def __init__(self, title, fieldtype, **kwargs):
@@ -918,14 +1011,11 @@ class WPageMantenimientoProyecto(WizardPage):
         label.setWordWrap(True)
         layout.addWidget(label)
 
-        self.opCrearTablas = QtGui.QCheckBox(u"Crear tablas nuevas")
-        self.opAnalizarTablas = QtGui.QCheckBox(u"Analizar validez de las tablas existentes")
+        self.opAnalizarTablas = QtGui.QCheckBox(u"Analizar tablas existentes y crear tablas nuevas")
         self.opResetCache = QtGui.QCheckBox(u"Resetear Caché de AlephERP")
-        self.opCrearTablas.setChecked(True)
         self.opAnalizarTablas.setChecked(True)
         self.opResetCache.setChecked(True)
         
-        layout.addWidget(self.opCrearTablas)
         layout.addWidget(self.opAnalizarTablas)
         layout.addWidget(self.opResetCache)
 
@@ -966,8 +1056,55 @@ class WPageMantenimientoProyecto(WizardPage):
         def status(x): self.status.setText(x); QtGui.QApplication.processEvents()
         def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
         def end_step(): self.n = 100; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
-        status(u"Analizando la carpeta del proyecto . . . ")
-        count_step()
+        cur = self.parent.cur
+        sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
+
+        task_count = 2
+        stepsz = 90 / task_count
+        
+        if self.opAnalizarTablas.isChecked():
+            status(u"Creando tablas nuevas y Analizando las existentes . . . ")
+            # ----
+            cur.execute("""
+                SELECT table_name
+                FROM information_schema.tables 
+                WHERE table_schema not in ('pg_catalog','information_schema') 
+                """)
+            dbtables = [ table for (table,) in cur ]
+            cur.execute("""
+                SELECT nombre, contenido
+                FROM %s_system WHERE type = 'table'
+                """ % sysprefix)
+            for (nombre, contenido) in cur:
+                xmltable = parseTable(nombre,contenido)
+                if nombre in dbtables:
+                    status(u"Creando tablas nuevas y Analizando las existentes ( revisando %s . . . )" % (repr(nombre)))
+                    update_table(cur, xmltable)
+                else:
+                    status(u"Creando tablas nuevas y Analizando las existentes ( creando %s . . . )" % (repr(nombre)))
+                    create_table(cur, xmltable)
+            
+            # ----
+            count_step(stepsz)
+        
+        
+        if self.opResetCache.isChecked():
+            status(u"Reseteando caché de AlephERP . . . ")
+            # ----
+            tmpdir = str(settings.value(KEY_TEMP_DIRECTORY).toString())            
+            localdbpath = os.path.join(tmpdir,SYSTEM_DATABASE_NAME)
+            if os.path.isfile(localdbpath): os.unlink(localdbpath)
+            cur.execute("""
+                SELECT nombre, contenido
+                FROM %s_system
+                """ % sysprefix)
+            for (nombre, contenido) in cur:
+                if not re.match(r"^[a-z_.0-9-]+$",nombre): 
+                    print "WARN: El nombre %s no parece adecuado. Obviamos la creación en local." % repr(nombre)
+                    continue
+                open(os.path.join(tmpdir,nombre),"w").write(contenido)
+            # ----
+            count_step(stepsz)
         
         status(u"Todas las operaciones solicitadas han sido realizadas.")
         end_step()
