@@ -145,7 +145,7 @@ def create_table(cur, xmltable):
     tabla.fields = []
     tabla.pk = []
     tabla.idxfields = {}
-    print "CREATE TABLE", tabla.nombre, "("
+    field_sql_list = []
     for xmlfield in xmltable.xpath("field"):
         field = Struct()
         field.nombre = xmlfield.xpath("name/text()")[0]
@@ -155,9 +155,16 @@ def create_table(cur, xmltable):
         if field.nombre in tabla.idxfields: raise ValueError("La tabla %s tiene el campo %s repetido" % (tabla.nombre,field.nombre))
         tabla.idxfields[field.nombre] = len(tabla.fields)
         tabla.fields.append(field)
-        print "  ", field.nombre, field.sqltype, ","
-    print "  ", "PRIMARY KEY (", ", ".join(tabla.pk), ")"
-    print ")"
+        field_sql_list.append(field.nombre + " " + field.sqltype)
+    if tabla.pk:
+        field_sql_list.append("PRIMARY KEY (" + ", ".join(tabla.pk) + ")")
+    
+    cur.execute("""
+    CREATE TABLE %s (
+        %s
+    )
+    """ % (tabla.nombre, ",\n".join(field_sql_list)))
+    
 
 def build_field_type(xmlfield):
     typetr={
@@ -1071,10 +1078,12 @@ class WPageMantenimientoProyecto(WizardPage):
                 WHERE table_schema not in ('pg_catalog','information_schema') 
                 """)
             dbtables = [ table for (table,) in cur ]
+            
             cur.execute("""
                 SELECT nombre, contenido
                 FROM %s_system WHERE type = 'table'
                 """ % sysprefix)
+            
             for (nombre, contenido) in cur:
                 xmltable = parseTable(nombre,contenido)
                 if nombre in dbtables:
