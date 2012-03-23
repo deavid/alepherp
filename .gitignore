@@ -3,3 +3,4 @@ build/
 Makefile
 qrc_*.cpp
 lib*.a
+*.pyc

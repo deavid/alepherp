@@ -11,7 +11,9 @@ import threading
 import os.path
 import re
 from lxml import etree
-from StringIO import StringIO
+
+from inst_utils import Struct
+import schemaupdater
 
 def apppath(): return os.path.abspath(os.path.dirname(sys.argv[0]))
 def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
@@ -19,8 +21,7 @@ def filepath(): return os.path.abspath(os.path.join(os.path.dirname(__file__)))
 def appdir(x):
     if os.path.isabs(x): return x
     else: return os.path.join(filepath(),x)
-class Struct(object):
-    """ Clase básica para almacenar propiedades al azar, tipo estructura """
+    
 
 class KnownError(Exception):
     """ Clase base para errores conocidos """
@@ -96,100 +97,6 @@ def HBox(*widgets,**kwargs):
             layout.addWidget(w, stretch, Qt.Alignment(align))
     return layout
     
-def parseTable(nombre, contenido, encoding = "UTF-8", remove_blank_text = True):
-    file_alike = StringIO(contenido)
-
-    parser = etree.XMLParser(
-                    ns_clean=True,
-                    encoding=encoding,
-                    recover=False,
-                    remove_blank_text=remove_blank_text,
-                    )
-    tree = etree.parse(file_alike, parser)
-    root = tree.getroot()
-    
-    objname = root.xpath("name")[0]
-    if objname.text != nombre: 
-        print "WARN: Nombre de tabla %s no coincide con el nombre declarado en el XML %s (se prioriza el nombre de tabla)" % (objname.text,nombre)
-        objname.text = nombre
-    return root
-
-def text2bool(text):
-    text = text.strip().lower()
-    if text.startswith("t"): return True
-    if text.startswith("f"): return False
-    
-    if text.startswith("y"): return True
-    if text.startswith("n"): return False
-
-    if text.startswith("1"): return True
-    if text.startswith("0"): return False
-    
-    if text == "on": return True
-    if text == "off": return False
-
-    if text.startswith("s"): return True
-    raise ValueError("Valor booleano no comprendido '%s'" % text)
-
-def one(listobj, default = None):
-    try: return listobj[0]
-    except IndexError: return default
-    
-
-def update_table(cur, xmltable):
-    pass
-
-def create_table(cur, xmltable):
-    tabla = Struct()
-    tabla.nombre = xmltable.xpath("name/text()")[0]
-    tabla.fields = []
-    tabla.pk = []
-    tabla.idxfields = {}
-    field_sql_list = []
-    for xmlfield in xmltable.xpath("field"):
-        field = Struct()
-        field.nombre = xmlfield.xpath("name/text()")[0]
-        field.sqltype = build_field_type(xmlfield)
-        field.pk = text2bool(one(xmlfield.xpath("pk/text()"),"false"))
-        if field.pk: tabla.pk.append(field.nombre)
-        if field.nombre in tabla.idxfields: raise ValueError("La tabla %s tiene el campo %s repetido" % (tabla.nombre,field.nombre))
-        tabla.idxfields[field.nombre] = len(tabla.fields)
-        tabla.fields.append(field)
-        field_sql_list.append(field.nombre + " " + field.sqltype)
-    if tabla.pk:
-        field_sql_list.append("PRIMARY KEY (" + ", ".join(tabla.pk) + ")")
-    
-    cur.execute("""
-    CREATE TABLE %s (
-        %s
-    )
-    """ % (tabla.nombre, ",\n".join(field_sql_list)))
-    
-
-def build_field_type(xmlfield):
-    typetr={
-        'string'    : 'character varying',
-        'double'    : 'double precision',
-        'number'    : 'integer',
-        'int'       : 'integer',
-        'uint'      : 'integer',
-        'unit'      : 'smallint',
-        'stringlist': 'text',
-        'pixmap'    : 'text',
-        'unlock'    : 'boolean',
-        'serial'    : 'serial',
-        'bool'      : 'bool',
-        'date'      : 'date',
-        'time'      : 'time',
-        'bytearray' : 'bytea',
-    }
-    mtd_type = one(xmlfield.xpath("type/text()"),"string")
-    nullable = text2bool(one(xmlfield.xpath("null/text()"),"true"))
-    length = int(one(xmlfield.xpath("length/text()"),"64"))
-    sql_type = typetr.get(mtd_type,mtd_type)
-    if sql_type == "character varying": sql_type += "(%d)" % length
-    sql_nullable = "" if nullable else " NOT NULL"
-    return sql_type + sql_nullable
     
 class LabelAndControl(object):
     def __init__(self, title, fieldtype, **kwargs):
@@ -857,7 +764,9 @@ class WPageCrearTablasSistema(WizardPage):
         status(u"Creación de tablas de sistema completada")
         self.completed = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
-        QtCore.QTimer.singleShot(1000, self.parent.next)
+        # Esto introduce un bug: si se clica next antes de 1s, luego se crea un usuario automático.
+        # QtCore.QTimer.singleShot(1000, self.parent.next)
+        
         
 class WPageCrearUsuario(WizardPage):
     def setup(self):
@@ -1068,6 +977,7 @@ class WPageMantenimientoProyecto(WizardPage):
         def count_step(n=1): self.n = (self.n + n) % 99 + 1; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
         def end_step(): self.n = 100; self.progress.setValue(self.n);  QtGui.QApplication.processEvents()
         cur = self.parent.cur
+        conn = self.parent.conn
         sysprefix = str(settings.value(KEY_SYSTEM_TABLE_PREFIX).toString())            
 
         task_count = 2
@@ -1089,13 +999,12 @@ class WPageMantenimientoProyecto(WizardPage):
                 """ % sysprefix)
             
             for (nombre, contenido) in curTablas:
-                xmltable = parseTable(nombre,contenido)
-                if nombre in dbtables:
-                    status(u"Creando tablas nuevas y Analizando las existentes ( revisando %s . . . )" % (repr(nombre)))
-                    update_table(cur, xmltable)
-                else:
+                xmltable = schemaupdater.parseTable(nombre,contenido)
+                if nombre not in dbtables:
                     status(u"Creando tablas nuevas y Analizando las existentes ( creando %s . . . )" % (repr(nombre)))
-                    create_table(cur, xmltable)
+                    schemaupdater.create_table(conn, xmltable)
+                status(u"Creando tablas nuevas y Analizando las existentes ( revisando %s . . . )" % (repr(nombre)))
+                schemaupdater.update_table(conn, xmltable)
             curTablas.close()
             # ----
             count_step(stepsz)
