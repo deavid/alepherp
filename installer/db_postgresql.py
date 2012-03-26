@@ -1,5 +1,17 @@
 # encoding: UTF-8
 from inst_utils import Struct
+import re
+
+def field2serial(field):
+    if field.format_extra and not re.match(r'nextval\(.+\)',field.format_extra): return
+    if field.format_type == 'integer':
+        field.format_extra = None
+        field.format_type = 'serial'
+        
+    if field.format_type == 'bigint':
+        field.format_extra = None
+        field.format_type = 'bigserial'
+     
 
 def get_oids(conn):
     cur = conn.cursor()

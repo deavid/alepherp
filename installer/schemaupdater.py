@@ -83,6 +83,7 @@ def update_table(conn, table):
             except Exception, e:
                 print "ALTER TABLE ERROR::" , e
             continue
+        pginspect.field2serial(ocol)
         print "Column:", ocol.name, "|", ocol.format_type, "|", ocol.sql_nullable, "|", ocol.format_extra
     print
     
