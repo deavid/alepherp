@@ -26,6 +26,15 @@
         <visiblegrid>true</visiblegrid> 
     </field> 
     <field> 
+        <name>nombre</name> 
+        <alias>Nombre</alias> 
+        <null>true</null> 
+        <pk>false</pk> 
+        <type>string</type> 
+        <length>100</length> 
+        <visiblegrid>true</visiblegrid> 
+    </field> 
+    <field> 
         <name>descripcion</name> 
         <alias>Descripcion</alias> 
         <null>false</null> 
@@ -34,4 +43,5 @@
         <length>250</length> 
         <visiblegrid>true</visiblegrid> 
     </field> 
+    
 </table>

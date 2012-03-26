@@ -76,15 +76,40 @@ def update_table(conn, table):
     for field in table.fields:
         ocol = dbfields.get(field.name,None)
         print "Field:", field.name, "|", field.sql_type, "|", field.sql_nullable, "|", field.default
+        default = None
+        if field.default:
+            default = field.default
+        elif not field.nullable:
+            default = pginspect.default4type(field.sql_type)
+            
         if ocol is None:
             # TODO: Agregar el campo
             try:
-                cur.execute("""ALTER TABLE "%s" ADD COLUMN "%s" %s """ % (otable.name, field.name, field.sql_definition))
+                if default is not None:
+                    cur.execute("""ALTER TABLE "%s" ADD COLUMN "%s" %s DEFAULT %%s""" % (otable.name, field.name, field.sql_definition),[default])
+                else:
+                    cur.execute("""ALTER TABLE "%s" ADD COLUMN "%s" %s """ % (otable.name, field.name, field.sql_definition))
             except Exception, e:
                 print "ALTER TABLE ERROR::" , e
             continue
         pginspect.field2serial(ocol)
-        print "Column:", ocol.name, "|", ocol.format_type, "|", ocol.sql_nullable, "|", ocol.format_extra
+        if ocol.format_type != field.sql_type:
+            print "Column type has changed:"
+            print "Column:", ocol.name, "|", ocol.format_type, "|", ocol.sql_nullable, "|", ocol.format_extra
+            try:
+                cur.execute("""ALTER TABLE "%s" ALTER COLUMN "%s" TYPE %s USING "%s"::%s""" % (otable.name, field.name, field.sql_type, field.name, field.sql_type))
+            except Exception, e:
+                print "ALTER TABLE ERROR::" , e
+
+        if ocol.nullable != field.nullable:
+            print "Column NOT NULL has changed:"
+            print "Column:", ocol.name, "|", ocol.format_type, "|", ocol.sql_nullable, "|", ocol.format_extra
+            setdrop = "DROP" if field.nullable else "SET"
+            try:
+                cur.execute("""ALTER TABLE "%s" ALTER COLUMN "%s" %s NOT NULL""" % (otable.name, field.name, setdrop))
+            except Exception, e:
+                print "ALTER TABLE ERROR::" , e
+        
     print
     
     

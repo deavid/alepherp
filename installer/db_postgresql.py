@@ -2,6 +2,52 @@
 from inst_utils import Struct
 import re
 
+TYPE_NUMBER = [
+    # ---------------- ENTEROS
+    "smallint",  # 2 bytes
+    "int",       # 4 bytes
+    "bigint",    # 8 bytes
+    
+    # ---------------- PRECISION EXACTA
+    "decimal",
+    "number",
+    "money",
+
+    # ---------------- PRECISION INEXACTA
+    "real",             # 4 bytes
+    "double", 
+    "double precision", # 8 bytes
+    
+]
+
+TYPE_SERIAL = [
+    "serial",     # 4 bytes
+    "bigserial",  # 8 bytes
+]
+
+TYPE_TEXT = [
+    "char",
+    "character",
+    "varchar",
+    "character varying",
+    "text",
+]
+
+TYPE_BINARY = [
+    "bytea",
+]
+
+TYPE_DATETIME = [
+    "timestamp",
+    "date",
+    "time",
+    "interval",
+]
+
+TYPE_BOOLEAN = [
+    "boolean",
+]
+
 def field2serial(field):
     if field.format_extra and not re.match(r'nextval\(.+\)',field.format_extra): return
     if field.format_type == 'integer':
@@ -12,6 +58,36 @@ def field2serial(field):
         field.format_extra = None
         field.format_type = 'bigserial'
      
+
+def getfamilytype(field_type):
+    field_type = field_type.lower()
+    idx_paren = field_type.find('(')
+    if idx_paren != -1:
+        field_type = field_type[:idx_paren]
+    
+    if field_type in TYPE_NUMBER: return "number"
+    if field_type in TYPE_SERIAL: return "serial"
+    if field_type in TYPE_TEXT: return "text"
+    if field_type in TYPE_BINARY: return "binary"
+    if field_type in TYPE_DATETIME: return "datetime"
+    if field_type in TYPE_BOOLEAN: return "boolean"
+    return field_type # <- desconocido
+
+def default4field(field):
+    if field.default: return field.default
+    if field.nullable: return None
+    return default4type(field.format_type)
+        
+    
+def default4type(field_type):
+    familytype = getfamilytype(field_type)
+    if familytype == "serial": return None
+    if familytype == "number": return 0
+    if familytype == "text": return ""
+    if familytype == "datetime": return "1990-01-01 00:00:00"
+    if familytype == "binary": return ""
+    if familytype == "boolean": return False
+    
 
 def get_oids(conn):
     cur = conn.cursor()
@@ -97,6 +173,7 @@ def get_table_columns(conn,obj):
         field.name = name
         field.format_type = format_type
         field.format_extra = format_extra
+        field.default = None # <- probablemente esta en format_extra...
         field.notnull = notnull
         field.nullable = not field.notnull
         field.sql_nullable = "NOT NULL" if notnull else ""

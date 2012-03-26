@@ -21,6 +21,15 @@
         <visiblegrid>true</visiblegrid> 
     </field> 
     <field> 
+        <name>descripcion</name> 
+        <alias>Descripcion</alias> 
+        <null>true</null> 
+        <pk>false</pk> 
+        <type>string</type> 
+        <length>100</length> 
+        <visiblegrid>true</visiblegrid> 
+    </field> 
+    <field> 
         <name>fechainicio</name> 
         <alias>Inicio</alias> 
         <null>false</null> 
